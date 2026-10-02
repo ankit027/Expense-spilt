@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TripSplit Online</title>
+<style>
+body{font-family:system-ui;margin:0;background:#f5f7fb;color:#172033}.app{max-width:850px;margin:auto;padding:18px}
+.card{background:#fff;border:1px solid #e4e8f0;border-radius:16px;padding:16px;margin:12px 0}
+button{padding:10px 14px;border:0;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700}button.secondary{background:#eef0ff;color:#4f46e5}
+input,select{padding:10px;width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.muted{color:#6d778b;font-size:13px}.good{color:#16834b}.bad{color:#c43d4b}
+.person,.expense{padding:11px 0;border-bottom:1px solid #eee}.empty{text-align:center;padding:25px;color:#777}
+#setup{background:#fff4d6;padding:14px;border-radius:14px}.hidden{display:none}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style></head><body><div class="app">
+<h1>Trip<span style="color:#4f46e5">Split</span> ☁️</h1>
+<div id="setup"><b>Connect your Google Sheet API</b><p class="muted">Paste the deployed Apps Script Web App URL once.</p>
+<div class="row"><input id="api" placeholder="https://script.google.com/macros/s/.../exec"><button onclick="connect()">Connect</button></div></div>
+<div id="main" class="hidden"></div></div>
+<script>
+let API=localStorage.getItem('tripsplit_api')||'',db={trips:[],people:[],expenses:[]},current=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function money(n,c='₹'){return c+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+async function call(action,data={}){let r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...data})});let x=await r.json();if(!x.ok)throw Error(x.error);return x}
+async function connect(){API=$('api').value.trim();if(!API)return alert('Paste API URL');localStorage.setItem('tripsplit_api',API);try{await sync();$('setup').classList.add('hidden');$('main').classList.remove('hidden');home()}catch(e){alert('Connection failed: '+e.message)}}
+async function sync(){let x=await call('bootstrap');db.trips=x.trips.map(t=>({id:String(t.tripId),name:t.name,date:t.date,currency:t.currency}));db.people=x.people.map(p=>({id:String(p.personId),tripId:String(p.tripId),name:p.name}));db.expenses=x.expenses.map(e=>({id:String(e.expenseId),tripId:String(e.tripId),desc:e.description,amount:+e.amount,paidBy:String(e.paidBy),category:e.category,date:e.date,shares:JSON.parse(e.sharesJson||'{}')}))}
+async function save(){await call('save',{data:{
+trips:db.trips,
+people:db.people,
+expenses:db.expenses.map(e=>({...e,tripId:e.tripId}))
+}});localStorage.setItem('tripsplit_cache',JSON.stringify(db))}
+function home(){current=null;$('main').innerHTML=`<div class="card row"><div><h2>My Trips</h2><span class="muted">Cloud synced</span></div><button onclick="newTrip()">＋ New Trip</button></div>`+(db.trips.length?db.trips.map(t=>`<div class="card row" onclick="openTrip('${t.id}')"><div><b>${esc(t.name)}</b><div class="muted">${t.peopleCount||db.people.filter(p=>p.tripId===t.id).length} people</div></div><b>${money(total(t),t.currency)}</b></div>`).join(''):'<div class="card empty">No trips yet.</div>')}
+function newTrip(){let n=prompt('Trip name');if(!n)return;let names=prompt('People, comma separated');if(!names)return;let t={id:crypto.randomUUID(),name:n,date:new Date().toISOString().slice(0,10),currency:'₹'};db.trips.unshift(t);names.split(',').map(x=>x.trim()).filter(Boolean).forEach(name=>db.people.push({id:crypto.randomUUID(),tripId:t.id,name}));save().then(()=>openTrip(t.id))}
+function openTrip(id){current=id;let t=db.trips.find(x=>x.id===id);let people=db.people.filter(p=>p.tripId===id);let ex=db.expenses.filter(e=>e.tripId===id);$('main').innerHTML=`<div class="row"><button class="secondary" onclick="home()">← Trips</button><button onclick="addExpense()">＋ Expense</button></div><div class="card"><h1>${esc(t.name)}</h1><div class="grid"><div><b>${money(total(t),t.currency)}</b><div class="muted">Total expense</div></div><div><b>${ex.length}</b><div class="muted">Expenses</div></div></div></div><div class="card"><h2>People</h2>${balances(t).map(x=>`<div class="person row"><span>${esc(x.name)}</span><b class="${x.balance>=0?'good':'bad'}">${x.balance>=0?'+':''}${money(x.balance,t.currency)}</b></div>`).join('')}</div><div class="card"><h2>Expenses</h2>${ex.length?ex.slice().reverse().map(e=>`<div class="expense row"><span><b>${esc(e.desc)}</b><br><small>${esc(people.find(p=>p.id===e.paidBy)?.name||'')}</small></span><span>${money(e.amount,t.currency)} <button class="secondary" onclick="delExpense('${e.id}')">×</button></span></div>`).join(''):'<div class="empty">No expenses</div>'}</div><div class="card"><h2>Settlement</h2>${settlements(t).map(x=>`<div class="person row"><span>${esc(x.from)} → ${esc(x.to)}</span><b>${money(x.amount,t.currency)}</b></div>`).join('')||'<div class="empty">Everyone is settled 🎉</div>'}</div>`}
+function total(t){return db.expenses.filter(e=>e.tripId===t.id).reduce((s,e)=>s+e.amount,0)}
+function balances(t){let m=Object.fromEntries(db.people.filter(p=>p.tripId===t.id).map(p=>[p.id,{name:p.name,paid:0,share:0}]));db.expenses.filter(e=>e.tripId===t.id).forEach(e=>{if(m[e.paidBy])m[e.paidBy].paid+=e.amount;Object.entries(e.shares||{}).forEach(([id,v])=>{if(m[id])m[id].share+=+v})});return Object.values(m).map(x=>({...x,balance:x.paid-x.share}))}
+function settlements(t){let b=balances(t),d=b.filter(x=>x.balance<-.005).map(x=>({name:x.name,bal:-x.balance})),c=b.filter(x=>x.balance>.005).map(x=>({name:x.name,bal:x.balance})),o=[];let i=0,j=0;while(i<d.length&&j<c.length){let a=Math.min(d[i].bal,c[j].bal);o.push({from:d[i].name,to:c[j].name,amount:a});d[i].bal-=a;c[j].bal-=a;if(d[i].bal<.005)i++;if(c[j].bal<.005)j++}return o}
+function addExpense(){let t=db.trips.find(x=>x.id===current),p=db.people.filter(x=>x.tripId===current),d=prompt('Expense description');if(!d)return;let a=+prompt('Amount');if(!(a>0))return;let paid=p[0];let pn=prompt('Who paid?\\n'+p.map((x,i)=>(i+1)+'. '+x.name).join('\\n'),'1');paid=p[Math.max(0,(+pn||1)-1)];let sn=prompt('Split among numbers (e.g. 1,2,3)',p.map((_,i)=>i+1).join(','));let ids=(sn||'').split(',').map(x=>p[(+x.trim()||1)-1]?.id).filter(Boolean);ids=[...new Set(ids)];if(!ids.length)return;let each=a/ids.length;db.expenses.push({id:crypto.randomUUID(),tripId:current,desc:d,amount:a,paidBy:paid.id,category:'Other',date:new Date().toISOString().slice(0,10),shares:Object.fromEntries(ids.map(id=>[id,each]))});save().then(()=>openTrip(current))}
+function delExpense(id){if(!confirm('Delete expense?'))return;db.expenses=db.expenses.filter(e=>e.id!==id);save().then(()=>openTrip(current))}
+if(API){$('api').value=API;connect()}else{let c=localStorage.getItem('tripsplit_cache');if(c){db=JSON.parse(c)}}
+</script></body></html>
