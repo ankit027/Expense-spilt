@@ -1,9 +1,19 @@
+Here is the complete update! 
+
+I have added a **Group/Trip feature**. You can now create multiple trips (e.g., "Mumbai Trip", "Goa Weekend", "Office Lunch") and add specific people to each one. The dashboard, expenses, and balances will all update based on the currently selected trip.
+
+### 🚀 How to update:
+1. Copy the entire code below.
+2. Replace the code in your `index.html` file.
+3. Save, upload to GitHub, and refresh your live page.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>✈️🍕 Trip & Food Splitter — dashboard + sheets</title>
+    <title>✈️🍕 Group Trip & Food Splitter</title>
     <style>
         /* CSS Variables for Light/Dark Mode */
         :root {
@@ -99,6 +109,49 @@
             padding: 30px 32px;
             border: 1px solid var(--border-color);
         }
+        
+        /* Top Bar: Groups & Theme */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: var(--panel-bg);
+            padding: 15px 25px;
+            border-radius: 60px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px -4px var(--shadow-color);
+        }
+        .group-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        .group-selector label {
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+        .group-selector select {
+            padding: 10px 16px;
+            border-radius: 60px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 500;
+            outline: none;
+            flex: 1;
+            max-width: 300px;
+            cursor: pointer;
+        }
+        .group-selector select:focus {
+            border-color: var(--btn-primary);
+        }
+
         h1 {
             font-size: 2.1rem;
             font-weight: 700;
@@ -134,9 +187,7 @@
             gap: 6px;
             font-size: 0.88rem;
         }
-        .btn-outline:hover {
-            filter: brightness(0.95);
-        }
+        .btn-outline:hover { filter: brightness(0.95); }
         .btn-primary {
             background: var(--btn-primary);
             border: none;
@@ -154,9 +205,7 @@
             gap: 8px;
             letter-spacing: 0.2px;
         }
-        .btn-primary:hover {
-            background: var(--btn-primary-hover);
-        }
+        .btn-primary:hover { background: var(--btn-primary-hover); }
         .btn-primary:active { transform: scale(0.98); }
 
         /* dashboard cards */
@@ -205,6 +254,7 @@
             .grid-2col { grid-template-columns: 1fr; gap: 20px; }
             .app-card { padding: 22px 18px; }
             h1 { font-size: 1.8rem; }
+            .top-bar { flex-direction: column; align-items: stretch; }
         }
         .panel {
             background: var(--panel-bg);
@@ -480,15 +530,27 @@
 </head>
 <body>
 <div class="app-card">
+    
+    <!-- TOP BAR: GROUP SELECTOR & THEME -->
+    <div class="top-bar">
+        <div class="group-selector">
+            <label for="groupSelect">📍 Current Group / Trip:</label>
+            <select id="groupSelect"></select>
+            <button id="newGroupBtn" class="btn-outline" style="margin-left: 5px;">➕ New Group</button>
+            <button id="deleteGroupBtn" class="btn-outline" style="color: var(--owes-text); border-color: var(--owes-text);">🗑️</button>
+        </div>
+        <div class="flex-row">
+            <button id="themeToggleBtn" class="btn-outline">🌙 Dark Mode</button>
+        </div>
+    </div>
+
     <h1>
         ✈️🍕 Trip & Food Splitter
-        <span style="font-size: 0.85rem; background: var(--paidby-bg); padding: 6px 18px; border-radius: 60px; font-weight: 500; color: var(--paidby-text); margin-left: auto;">dashboard + sheets</span>
     </h1>
     <div class="subhead">
         <span>Split trip costs & meals — with live dashboard and Google Sheets export.</span>
         <div class="flex-row">
-            <button id="themeToggleBtn" class="btn-outline">🌙 Dark Mode</button>
-            <button id="resetAllBtn" class="btn-outline">⟲ Reset all</button>
+            <button id="resetAllBtn" class="btn-outline">⟲ Reset Current Group</button>
         </div>
     </div>
 
@@ -497,7 +559,7 @@
         <div class="stat-card">
             <div class="label">👥 Friends</div>
             <div class="value" id="dashFriendCount">0</div>
-            <div class="sub">in the group</div>
+            <div class="sub">in this group</div>
         </div>
         <div class="stat-card">
             <div class="label">🧾 Expenses</div>
@@ -519,10 +581,10 @@
     <div class="grid-2col">
         <!-- LEFT PANEL: FRIENDS -->
         <div class="panel">
-            <h2>👥 Friends <span class="badge" id="friendCountBadge">0</span></h2>
+            <h2>👥 Friends in this Group <span class="badge" id="friendCountBadge">0</span></h2>
             <div id="friendList" class="friend-list scroll-thin"></div>
             <div class="add-friend-row">
-                <input type="text" id="newFriendName" placeholder="e.g. Alex" maxlength="30">
+                <input type="text" id="newFriendName" placeholder="e.g. Rahul" maxlength="30">
                 <button id="addFriendBtn" class="btn-primary" style="padding: 12px 22px;">➕ Add</button>
             </div>
         </div>
@@ -533,7 +595,7 @@
             <div class="expense-form">
                 <div class="form-row">
                     <label for="expenseDesc">What</label>
-                    <input type="text" id="expenseDesc" placeholder="Dinner, taxi, Airbnb..." maxlength="40">
+                    <input type="text" id="expenseDesc" placeholder="Dinner, taxi, hotel..." maxlength="40">
                 </div>
                 <div class="form-row">
                     <label for="expenseAmount">Amount (₹)</label>
@@ -577,7 +639,6 @@
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const body = document.body;
 
-        // Check local storage for saved theme
         if (localStorage.getItem('theme') === 'dark') {
             body.classList.add('dark-mode');
             themeToggleBtn.textContent = '☀️ Light Mode';
@@ -595,21 +656,27 @@
         });
 
         // ---------- STATE ----------
-        let friends = [];
-        let expenses = [];          // { id, description, amount, paidBy }
-        let nextExpenseId = 1;
+        // Structure: { id, name, friends: [], expenses: [], nextExpenseId }
+        let groups = [];
+        let activeGroupId = null;
 
         // DOM refs
+        const groupSelect = document.getElementById('groupSelect');
+        const newGroupBtn = document.getElementById('newGroupBtn');
+        const deleteGroupBtn = document.getElementById('deleteGroupBtn');
+        
         const friendListEl = document.getElementById('friendList');
         const friendCountBadge = document.getElementById('friendCountBadge');
         const newFriendNameInput = document.getElementById('newFriendName');
         const addFriendBtn = document.getElementById('addFriendBtn');
+        
         const expenseDescInput = document.getElementById('expenseDesc');
         const expenseAmountInput = document.getElementById('expenseAmount');
         const expensePaidBySelect = document.getElementById('expensePaidBy');
         const addExpenseBtn = document.getElementById('addExpenseBtn');
         const expenseListEl = document.getElementById('expenseList');
         const expenseCountBadge = document.getElementById('expenseCountBadge');
+        
         const totalSpentAmountEl = document.getElementById('totalSpentAmount');
         const balanceListEl = document.getElementById('balanceList');
         const resetAllBtn = document.getElementById('resetAllBtn');
@@ -637,21 +704,87 @@
             });
         }
 
+        function getActiveGroup() {
+            return groups.find(g => g.id === activeGroupId);
+        }
+
+        // ---------- INIT & STORAGE ----------
+        function init() {
+            const savedData = localStorage.getItem('splitter_groups');
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    groups = parsed.groups;
+                    activeGroupId = parsed.activeGroupId;
+                    if (!groups.find(g => g.id === activeGroupId) && groups.length > 0) {
+                        activeGroupId = groups[0].id;
+                    }
+                } catch (e) {
+                    console.error("Failed to load data", e);
+                    createDemoData();
+                }
+            } else {
+                createDemoData();
+            }
+            renderGroupSelect();
+            renderAll();
+        }
+
+        function saveData() {
+            localStorage.setItem('splitter_groups', JSON.stringify({ groups, activeGroupId }));
+        }
+
+        function createDemoData() {
+            groups = [
+                {
+                    id: 'group_1',
+                    name: 'Mumbai Trip',
+                    friends: ['Rahul', 'Amit', 'Priya'],
+                    expenses: [
+                        { id: 1, description: 'Taxi to airport', amount: 850, paidBy: 'Rahul' },
+                        { id: 2, description: 'Hotel booking', amount: 4500, paidBy: 'Amit' },
+                        { id: 3, description: 'Dinner at Marine Drive', amount: 1200, paidBy: 'Priya' }
+                    ],
+                    nextExpenseId: 4
+                },
+                {
+                    id: 'group_2',
+                    name: 'Office Lunch',
+                    friends: ['Sam', 'John'],
+                    expenses: [
+                        { id: 1, description: 'Pizza', amount: 600, paidBy: 'Sam' }
+                    ],
+                    nextExpenseId: 2
+                }
+            ];
+            activeGroupId = 'group_1';
+        }
+
         // ---------- RENDER FUNCTIONS ----------
 
+        function renderGroupSelect() {
+            groupSelect.innerHTML = groups.map(g => 
+                `<option value="${g.id}">${escapeHtml(g.name)}</option>`
+            ).join('');
+            if (activeGroupId) groupSelect.value = activeGroupId;
+        }
+
         function renderFriends() {
-            if (friends.length === 0) {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            if (group.friends.length === 0) {
                 friendListEl.innerHTML = `<div class="empty-message">No friends yet. Add someone!</div>`;
             } else {
-                friendListEl.innerHTML = friends.map((name, index) => `
+                friendListEl.innerHTML = group.friends.map((name, index) => `
                     <div class="friend-item">
                         <input type="text" value="${escapeHtml(name)}" class="friend-name-input" data-index="${index}" maxlength="30">
                         <button class="remove-friend" data-index="${index}" title="Remove friend">✕</button>
                     </div>
                 `).join('');
             }
-            friendCountBadge.textContent = friends.length;
-            dashFriendCount.textContent = friends.length;
+            friendCountBadge.textContent = group.friends.length;
+            dashFriendCount.textContent = group.friends.length;
 
             // Attach listeners
             document.querySelectorAll('.friend-name-input').forEach(input => {
@@ -659,13 +792,14 @@
                     const idx = parseInt(e.target.dataset.index);
                     const newName = e.target.value.trim();
                     if (newName === '') {
-                        e.target.value = friends[idx];
+                        e.target.value = group.friends[idx];
                         return;
                     }
-                    friends[idx] = newName;
+                    group.friends[idx] = newName;
                     updatePaidBySelect();
                     renderExpenses();
                     renderDashboardAndBalances();
+                    saveData();
                 });
             });
 
@@ -680,25 +814,31 @@
         }
 
         function updatePaidBySelect() {
+            const group = getActiveGroup();
+            if (!group) return;
+
             const current = expensePaidBySelect.value;
-            if (friends.length === 0) {
+            if (group.friends.length === 0) {
                 expensePaidBySelect.innerHTML = `<option value="">— add friends first —</option>`;
                 expensePaidBySelect.disabled = true;
                 return;
             }
             expensePaidBySelect.disabled = false;
-            expensePaidBySelect.innerHTML = friends.map(name =>
+            expensePaidBySelect.innerHTML = group.friends.map(name =>
                 `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
             ).join('');
-            if (friends.includes(current)) expensePaidBySelect.value = current;
-            else if (friends.length) expensePaidBySelect.value = friends[0];
+            if (group.friends.includes(current)) expensePaidBySelect.value = current;
+            else if (group.friends.length) expensePaidBySelect.value = group.friends[0];
         }
 
         function renderExpenses() {
-            if (expenses.length === 0) {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            if (group.expenses.length === 0) {
                 expenseListEl.innerHTML = `<div class="empty-message">No expenses yet. Add one above.</div>`;
             } else {
-                expenseListEl.innerHTML = expenses.map(exp => `
+                expenseListEl.innerHTML = group.expenses.map(exp => `
                     <div class="expense-item">
                         <span class="desc">${escapeHtml(exp.description)}</span>
                         <span class="amount">₹${exp.amount.toFixed(2)}</span>
@@ -707,8 +847,8 @@
                     </div>
                 `).join('');
             }
-            expenseCountBadge.textContent = expenses.length;
-            dashExpenseCount.textContent = expenses.length;
+            expenseCountBadge.textContent = group.expenses.length;
+            dashExpenseCount.textContent = group.expenses.length;
 
             document.querySelectorAll('.delete-expense').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -719,28 +859,31 @@
         }
 
         function renderDashboardAndBalances() {
+            const group = getActiveGroup();
+            if (!group) return;
+
             // --- dashboard ---
-            const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-            const fairShare = friends.length ? total / friends.length : 0;
+            const total = group.expenses.reduce((sum, e) => sum + e.amount, 0);
+            const fairShare = group.friends.length ? total / group.friends.length : 0;
 
             dashTotalSpent.textContent = `₹${total.toFixed(2)}`;
-            dashFairShare.textContent = friends.length ? `₹${fairShare.toFixed(2)}` : '₹0.00';
+            dashFairShare.textContent = group.friends.length ? `₹${fairShare.toFixed(2)}` : '₹0.00';
             totalSpentAmountEl.textContent = `₹${total.toFixed(2)}`;
 
             // --- balances ---
-            if (friends.length === 0) {
+            if (group.friends.length === 0) {
                 balanceListEl.innerHTML = `<div class="empty-message">Add friends and expenses to see balances.</div>`;
                 return;
             }
 
-            if (expenses.length === 0) {
+            if (group.expenses.length === 0) {
                 balanceListEl.innerHTML = `<div class="empty-message">No expenses to split yet.</div>`;
                 return;
             }
 
             const paidMap = new Map();
-            friends.forEach(f => paidMap.set(f, 0));
-            expenses.forEach(exp => {
+            group.friends.forEach(f => paidMap.set(f, 0));
+            group.expenses.forEach(exp => {
                 if (paidMap.has(exp.paidBy)) {
                     paidMap.set(exp.paidBy, paidMap.get(exp.paidBy) + exp.amount);
                 } else {
@@ -748,8 +891,8 @@
                 }
             });
 
-            const share = total / friends.length;
-            const balances = friends.map(friend => ({
+            const share = total / group.friends.length;
+            const balances = group.friends.map(friend => ({
                 name: friend,
                 balance: (paidMap.get(friend) || 0) - share
             }));
@@ -776,87 +919,144 @@
         // ---------- ACTIONS ----------
 
         function addFriend(name) {
+            const group = getActiveGroup();
+            if (!group) return false;
+            
             const trimmed = name.trim();
             if (trimmed === '') return false;
-            if (friends.includes(trimmed)) {
-                alert(`Friend "${trimmed}" already exists.`);
+            if (group.friends.includes(trimmed)) {
+                alert(`Friend "${trimmed}" already exists in this group.`);
                 return false;
             }
-            friends.push(trimmed);
+            group.friends.push(trimmed);
             renderAll();
+            saveData();
             return true;
         }
 
         function removeFriend(index) {
-            if (index < 0 || index >= friends.length) return;
-            const removed = friends[index];
-            if (expenses.some(e => e.paidBy === removed)) {
+            const group = getActiveGroup();
+            if (!group || index < 0 || index >= group.friends.length) return;
+            
+            const removed = group.friends[index];
+            if (group.expenses.some(e => e.paidBy === removed)) {
                 if (!confirm(`"${removed}" has paid for expenses. Remove anyway? Their payments will not be credited.`)) return;
             }
-            friends.splice(index, 1);
+            group.friends.splice(index, 1);
             renderAll();
+            saveData();
         }
 
         function addExpense(desc, amount, paidBy) {
+            const group = getActiveGroup();
+            if (!group) return false;
+
             if (!desc.trim()) { alert('Please enter a description.'); return false; }
             const amt = parseFloat(amount);
             if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return false; }
-            if (!paidBy || !friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
+            if (!paidBy || !group.friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
 
-            expenses.push({
-                id: nextExpenseId++,
+            group.expenses.push({
+                id: group.nextExpenseId++,
                 description: desc.trim(),
                 amount: amt,
                 paidBy
             });
             renderAll();
+            saveData();
             return true;
         }
 
         function deleteExpense(id) {
-            expenses = expenses.filter(e => e.id !== id);
+            const group = getActiveGroup();
+            if (!group) return;
+            group.expenses = group.expenses.filter(e => e.id !== id);
             renderAll();
+            saveData();
         }
 
-        function resetAll() {
-            if (friends.length === 0 && expenses.length === 0) return;
-            if (confirm('Delete all friends and expenses? This cannot be undone.')) {
-                friends = [];
-                expenses = [];
-                nextExpenseId = 1;
+        function resetGroup() {
+            const group = getActiveGroup();
+            if (!group) return;
+            if (group.friends.length === 0 && group.expenses.length === 0) return;
+            
+            if (confirm(`Delete all friends and expenses in "${group.name}"? This cannot be undone.`)) {
+                group.friends = [];
+                group.expenses = [];
+                group.nextExpenseId = 1;
                 newFriendNameInput.value = '';
                 expenseDescInput.value = '';
                 expenseAmountInput.value = '';
                 renderAll();
+                saveData();
+            }
+        }
+
+        // ---------- GROUPS ----------
+        function createGroup() {
+            const name = prompt("Enter a name for the new group/trip (e.g., Goa Trip, Office Lunch):");
+            if (!name || name.trim() === '') return;
+            
+            const newGroup = {
+                id: 'group_' + Date.now(),
+                name: name.trim(),
+                friends: [],
+                expenses: [],
+                nextExpenseId: 1
+            };
+            groups.push(newGroup);
+            activeGroupId = newGroup.id;
+            
+            renderGroupSelect();
+            renderAll();
+            saveData();
+        }
+
+        function deleteGroup() {
+            const group = getActiveGroup();
+            if (!group) return;
+            if (groups.length === 1) {
+                alert("You must have at least one group. Create another one before deleting this.");
+                return;
+            }
+            if (confirm(`Are you sure you want to delete the entire group "${group.name}"?`)) {
+                groups = groups.filter(g => g.id !== activeGroupId);
+                activeGroupId = groups[0].id;
+                renderGroupSelect();
+                renderAll();
+                saveData();
             }
         }
 
         // ---------- GOOGLE SHEETS EXPORT ----------
         async function pushToGoogleSheets() {
-            if (friends.length === 0 && expenses.length === 0) {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            if (group.friends.length === 0 && group.expenses.length === 0) {
                 sheetsStatus.textContent = '⚠️ No data to export.';
                 sheetsStatus.style.background = '#ffe6e6';
                 return;
             }
 
-            // Build payload
-            const total = expenses.reduce((s, e) => s + e.amount, 0);
-            const share = friends.length ? total / friends.length : 0;
+            const total = group.expenses.reduce((s, e) => s + e.amount, 0);
+            const share = group.friends.length ? total / group.friends.length : 0;
             const paidMap = new Map();
-            friends.forEach(f => paidMap.set(f, 0));
-            expenses.forEach(e => {
+            group.friends.forEach(f => paidMap.set(f, 0));
+            group.expenses.forEach(e => {
                 if (paidMap.has(e.paidBy)) paidMap.set(e.paidBy, paidMap.get(e.paidBy) + e.amount);
                 else paidMap.set(e.paidBy, e.amount);
             });
-            const balances = friends.map(f => ({
+            const balances = group.friends.map(f => ({
                 name: f,
                 paid: paidMap.get(f) || 0,
                 balance: (paidMap.get(f) || 0) - share
             }));
 
             const payload = {
-                friends,
-                expenses: expenses.map(e => ({ description: e.description, amount: e.amount, paidBy: e.paidBy })),
+                groupName: group.name,
+                friends: group.friends,
+                expenses: group.expenses.map(e => ({ description: e.description, amount: e.amount, paidBy: e.paidBy })),
                 total: Number(total.toFixed(2)),
                 fairShare: Number(share.toFixed(2)),
                 balances: balances.map(b => ({ name: b.name, paid: Number(b.paid.toFixed(2)), balance: Number(b.balance.toFixed(2)) })),
@@ -899,6 +1099,16 @@
 
         // ---------- EVENT LISTENERS ----------
 
+        groupSelect.addEventListener('change', (e) => {
+            activeGroupId = e.target.value;
+            renderAll();
+            saveData();
+        });
+
+        newGroupBtn.addEventListener('click', createGroup);
+        deleteGroupBtn.addEventListener('click', deleteGroup);
+        resetAllBtn.addEventListener('click', resetGroup);
+
         addFriendBtn.addEventListener('click', () => {
             if (addFriend(newFriendNameInput.value)) {
                 newFriendNameInput.value = '';
@@ -923,22 +1133,12 @@
             if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
         });
 
-        resetAllBtn.addEventListener('click', resetAll);
         pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
 
-        // ---------- INITIAL DEMO DATA ----------
-        function initDemo() {
-            friends = ['Alex', 'Sam', 'Jordan'];
-            expenses = [
-                { id: nextExpenseId++, description: 'Pizza night', amount: 1200.00, paidBy: 'Alex' },
-                { id: nextExpenseId++, description: 'Taxi to airport', amount: 850.00, paidBy: 'Sam' },
-                { id: nextExpenseId++, description: 'Airbnb (2 nights)', amount: 5000.00, paidBy: 'Jordan' },
-            ];
-            renderAll();
-        }
-
-        initDemo();
+        // ---------- START ----------
+        init();
     })();
 </script>
 </body>
 </html>
+```
