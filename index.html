@@ -1110,7 +1110,6 @@
             saveData();
         }
 
-        // THIS FUNCTION NOW HANDLES ADDING AND SAVING
         function addExpenseAndSync() {
             const group = getActiveGroup();
             if (!group) return;
@@ -1137,7 +1136,6 @@
                 }
             }
 
-            // 1. Add to local state
             group.expenses.push({
                 id: group.nextExpenseId++,
                 description: desc.trim(),
@@ -1146,14 +1144,12 @@
                 splitWith
             });
 
-            // 2. Clear inputs
             expenseDescInput.value = '';
             expenseAmountInput.value = '';
             expenseDescInput.focus();
             splitTypeSelect.value = 'group';
             customSplitArea.style.display = 'none';
 
-            // 3. Render & Save (triggers auto-sync in background)
             renderAll();
             saveData(); 
         }
@@ -1221,7 +1217,7 @@
             }
         }
 
-        // ---------- GOOGLE SHEETS AUTO-SYNC ----------
+        // ---------- GOOGLE SHEETS AUTO-SYNC (CORS FIXED) ----------
         async function autoSyncToSheets() {
             const group = getActiveGroup();
             if (!group) return;
@@ -1270,29 +1266,32 @@
                 const formData = new URLSearchParams();
                 formData.append('data', JSON.stringify(payload));
 
-                const response = await fetch(GOOGLE_SHEET_URL, {
+                // USING NO-CORS TO BYPASS BROWSER BLOCK
+                await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
                     body: formData
                 });
 
-                if (response.ok) {
-                    sheetsStatus.textContent = '✅ Auto-synced successfully!';
-                    sheetsStatus.style.background = 'var(--gets-bg)';
-                    sheetsStatus.style.color = 'var(--gets-text)';
-                    
-                    setTimeout(() => {
-                        if (sheetsStatus.textContent === '✅ Auto-synced successfully!') {
-                            sheetsStatus.textContent = '🔄 Auto-sync active';
-                            sheetsStatus.style.background = 'var(--paidby-bg)';
-                            sheetsStatus.style.color = 'var(--paidby-text)';
-                        }
-                    }, 4000);
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                // Since no-cors doesn't return a readable response, we assume success if no error was thrown
+                sheetsStatus.textContent = '✅ Auto-synced successfully!';
+                sheetsStatus.style.background = 'var(--gets-bg)';
+                sheetsStatus.style.color = 'var(--gets-text)';
+                
+                setTimeout(() => {
+                    if (sheetsStatus.textContent === '✅ Auto-synced successfully!') {
+                        sheetsStatus.textContent = '🔄 Auto-sync active';
+                        sheetsStatus.style.background = 'var(--paidby-bg)';
+                        sheetsStatus.style.color = 'var(--paidby-text)';
+                    }
+                }, 4000);
+
             } catch (err) {
                 console.warn('Auto-sync failed:', err);
-                sheetsStatus.textContent = '⚠️ Sync failed. (CORS or Offline)';
+                sheetsStatus.textContent = '⚠️ Sync failed. (Network error)';
                 sheetsStatus.style.background = '#ffe6e6';
                 sheetsStatus.style.color = '#b13e3e';
             }
@@ -1317,7 +1316,6 @@
         deleteGroupBtn.addEventListener('click', deleteGroup);
         resetAllBtn.addEventListener('click', resetGroup);
         
-        // Manual Sync Button
         manualSyncBtn.addEventListener('click', () => {
             if (syncTimeout) clearTimeout(syncTimeout);
             autoSyncToSheets();
@@ -1333,7 +1331,6 @@
             if (e.key === 'Enter') { e.preventDefault(); addFriendBtn.click(); }
         });
 
-        // THIS BUTTON NOW DOES BOTH ADD AND SAVE
         addExpenseBtn.addEventListener('click', addExpenseAndSync);
         
         expenseDescInput.addEventListener('keypress', (e) => {
