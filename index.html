@@ -5,34 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>✈️🍕 Trip & Food Splitter — dashboard + sheets</title>
     <style>
+        /* CSS Variables for Light/Dark Mode */
+        :root {
+            --bg-gradient: linear-gradient(145deg, #f0f5fa 0%, #e2eaf2 100%);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #1a2e3b;
+            --text-sub: #4b5f6d;
+            --border-color: #ffffffcc;
+            --input-bg: #ffffff;
+            --input-border: #cddde9;
+            --friend-bg: #f8fafd;
+            --expense-bg: #f6faff;
+            --balance-bg: #e9f2fa;
+            --results-text: #16344a;
+            --btn-outline-bg: #ffffff;
+            --btn-outline-border: #cbd5e1;
+            --btn-outline-text: #2c4b5c;
+            --btn-primary: #2c6e9c;
+            --btn-primary-hover: #1f547a;
+            --stat-label: #5a7182;
+            --stat-value: #1b3b4e;
+            --amount-bg: #e3f3e9;
+            --amount-text: #1f6e3f;
+            --paidby-bg: #e2ecf9;
+            --paidby-text: #2a5b7c;
+            --owes-bg: #ffe9e9;
+            --owes-text: #b13e3e;
+            --gets-bg: #e2f5e9;
+            --gets-text: #1c7a4b;
+            --settled-bg: #edf3f8;
+            --settled-text: #6d8b9c;
+            --shadow-color: rgba(0, 20, 30, 0.15);
+            --sheets-bar-bg: #ffffffd0;
+        }
+
+        body.dark-mode {
+            --bg-gradient: linear-gradient(145deg, #12181f 0%, #1a232e 100%);
+            --card-bg: rgba(30, 42, 54, 0.85);
+            --panel-bg: rgba(30, 42, 54, 0.9);
+            --text-main: #e2ebf2;
+            --text-sub: #94a8b8;
+            --border-color: #2d4052;
+            --input-bg: #243444;
+            --input-border: #3a5166;
+            --friend-bg: #1e2a36;
+            --expense-bg: #1e2a36;
+            --balance-bg: #1a2633;
+            --results-text: #d1e0ed;
+            --btn-outline-bg: #243444;
+            --btn-outline-border: #3a5166;
+            --btn-outline-text: #d1e0ed;
+            --btn-primary: #3b82c4;
+            --btn-primary-hover: #2d6a9f;
+            --stat-label: #8ba3b8;
+            --stat-value: #e2ebf2;
+            --amount-bg: #1c3b2b;
+            --amount-text: #6edc9f;
+            --paidby-bg: #1e324a;
+            --paidby-text: #7bb3e0;
+            --owes-bg: #4a1c1c;
+            --owes-text: #ff8c8c;
+            --gets-bg: #1c3b2b;
+            --gets-text: #6edc9f;
+            --settled-bg: #2a3540;
+            --settled-text: #8ba3b8;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --sheets-bar-bg: rgba(30, 42, 54, 0.9);
+        }
+
         * {
             box-sizing: border-box;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
         body {
-            background: linear-gradient(145deg, #f0f5fa 0%, #e2eaf2 100%);
+            background: var(--bg-gradient);
             margin: 0;
             min-height: 100vh;
             padding: 20px;
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            color: var(--text-main);
         }
         .app-card {
             max-width: 1400px;
             width: 100%;
-            background: rgba(255, 255, 255, 0.8);
+            background: var(--card-bg);
             backdrop-filter: blur(10px);
             border-radius: 44px;
-            box-shadow: 0 30px 55px -18px rgba(0, 20, 30, 0.4), 0 2px 10px 0 rgba(0,0,0,0.05);
+            box-shadow: 0 30px 55px -18px var(--shadow-color), 0 2px 10px 0 rgba(0,0,0,0.05);
             padding: 30px 32px;
-            border: 1px solid #ffffffcc;
+            border: 1px solid var(--border-color);
         }
         h1 {
             font-size: 2.1rem;
             font-weight: 700;
             letter-spacing: -0.5px;
-            color: #1a2e3b;
+            color: var(--text-main);
             margin: 0 0 6px 0;
             display: flex;
             align-items: center;
@@ -40,7 +111,7 @@
             flex-wrap: wrap;
         }
         .subhead {
-            color: #4b5f6d;
+            color: var(--text-sub);
             font-size: 0.98rem;
             margin-bottom: 24px;
             display: flex;
@@ -49,12 +120,12 @@
             flex-wrap: wrap;
         }
         .btn-outline {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
+            background: var(--btn-outline-bg);
+            border: 1px solid var(--btn-outline-border);
             padding: 8px 18px;
             border-radius: 50px;
             font-weight: 500;
-            color: #2c4b5c;
+            color: var(--btn-outline-text);
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -64,11 +135,10 @@
             font-size: 0.88rem;
         }
         .btn-outline:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
+            filter: brightness(0.95);
         }
         .btn-primary {
-            background: #2c6e9c;
+            background: var(--btn-primary);
             border: none;
             color: white;
             font-weight: 600;
@@ -77,7 +147,7 @@
             font-size: 0.95rem;
             cursor: pointer;
             transition: background 0.15s, transform 0.1s;
-            box-shadow: 0 8px 16px -8px #2c6e9c;
+            box-shadow: 0 8px 16px -8px var(--btn-primary);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -85,7 +155,7 @@
             letter-spacing: 0.2px;
         }
         .btn-primary:hover {
-            background: #1f547a;
+            background: var(--btn-primary-hover);
         }
         .btn-primary:active { transform: scale(0.98); }
 
@@ -97,30 +167,30 @@
             margin-bottom: 28px;
         }
         .stat-card {
-            background: #ffffffd9;
+            background: var(--card-bg);
             backdrop-filter: blur(4px);
             border-radius: 28px;
             padding: 18px 20px;
-            box-shadow: 0 8px 18px -10px rgba(0, 20, 30, 0.15), inset 0 1px 0 #ffffff;
-            border: 1px solid #ffffff;
+            box-shadow: 0 8px 18px -10px var(--shadow-color);
+            border: 1px solid var(--border-color);
         }
         .stat-card .label {
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #5a7182;
+            color: var(--stat-label);
             font-weight: 600;
             margin-bottom: 8px;
         }
         .stat-card .value {
             font-size: 2rem;
             font-weight: 700;
-            color: #1b3b4e;
+            color: var(--stat-value);
             line-height: 1.2;
         }
         .stat-card .sub {
             font-size: 0.8rem;
-            color: #6f8b9c;
+            color: var(--stat-label);
             margin-top: 6px;
         }
 
@@ -137,31 +207,31 @@
             h1 { font-size: 1.8rem; }
         }
         .panel {
-            background: #ffffffd9;
+            background: var(--panel-bg);
             backdrop-filter: blur(4px);
             border-radius: 30px;
             padding: 22px 22px 24px;
-            box-shadow: 0 8px 18px -6px rgba(0, 20, 30, 0.12), inset 0 1px 0 #ffffff;
-            border: 1px solid #ffffff;
+            box-shadow: 0 8px 18px -6px var(--shadow-color);
+            border: 1px solid var(--border-color);
         }
         .panel h2 {
             font-size: 1.25rem;
             font-weight: 600;
             margin: 0 0 16px 0;
-            color: #1f3a4b;
+            color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 8px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--input-border);
             padding-bottom: 12px;
         }
         .panel h2 span.badge {
-            background: #d0e2f0;
+            background: var(--paidby-bg);
             border-radius: 40px;
             padding: 2px 12px;
             font-size: 0.78rem;
             font-weight: 500;
-            color: #1f4a6b;
+            color: var(--paidby-text);
             margin-left: auto;
         }
 
@@ -179,10 +249,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            background: #f8fafd;
+            background: var(--friend-bg);
             padding: 6px 12px;
             border-radius: 60px;
-            border: 1px solid #dee7ef;
+            border: 1px solid var(--input-border);
         }
         .friend-item input[type="text"] {
             flex: 1;
@@ -191,13 +261,13 @@
             padding: 8px 4px;
             font-size: 0.95rem;
             font-weight: 500;
-            color: #1e3343;
+            color: var(--text-main);
             outline: none;
         }
         .remove-friend {
             background: none;
             border: none;
-            color: #a0b3c2;
+            color: var(--stat-label);
             font-size: 1.3rem;
             cursor: pointer;
             padding: 0 6px;
@@ -212,14 +282,15 @@
             flex: 1;
             padding: 12px 16px;
             border-radius: 60px;
-            border: 1px solid #cddde9;
-            background: #ffffff;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-main);
             font-size: 0.95rem;
             outline: none;
         }
         .add-friend-row input:focus {
-            border-color: #5d9bc7;
-            box-shadow: 0 0 0 3px #d0e5f5;
+            border-color: var(--btn-primary);
+            box-shadow: 0 0 0 3px var(--paidby-bg);
         }
 
         /* expense form */
@@ -237,7 +308,7 @@
         }
         .form-row label {
             font-weight: 500;
-            color: #2a475c;
+            color: var(--text-sub);
             font-size: 0.88rem;
             min-width: 60px;
         }
@@ -246,14 +317,15 @@
             min-width: 130px;
             padding: 12px 16px;
             border-radius: 60px;
-            border: 1px solid #cddde9;
-            background: #ffffff;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-main);
             font-size: 0.95rem;
             outline: none;
         }
         .form-row input:focus, .form-row select:focus {
-            border-color: #5d9bc7;
-            box-shadow: 0 0 0 3px #d0e5f5;
+            border-color: var(--btn-primary);
+            box-shadow: 0 0 0 3px var(--paidby-bg);
         }
 
         /* expense list */
@@ -269,39 +341,39 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: #f6faff;
+            background: var(--expense-bg);
             border-radius: 60px;
             padding: 8px 16px;
-            border: 1px solid #d9e5f0;
+            border: 1px solid var(--input-border);
             font-size: 0.9rem;
             flex-wrap: wrap;
         }
         .expense-item .desc {
             font-weight: 600;
-            color: #1b3b4e;
+            color: var(--text-main);
             flex: 2;
             min-width: 100px;
         }
         .expense-item .amount {
             font-weight: 700;
-            color: #1f6e3f;
-            background: #e3f3e9;
+            color: var(--amount-text);
+            background: var(--amount-bg);
             padding: 4px 12px;
             border-radius: 30px;
             font-size: 0.85rem;
         }
         .expense-item .paidby {
-            background: #e2ecf9;
+            background: var(--paidby-bg);
             padding: 4px 12px;
             border-radius: 30px;
-            color: #2a5b7c;
+            color: var(--paidby-text);
             font-weight: 500;
             font-size: 0.85rem;
         }
         .delete-expense {
             background: none;
             border: none;
-            color: #b0c4d4;
+            color: var(--stat-label);
             font-size: 1.2rem;
             cursor: pointer;
             margin-left: auto;
@@ -311,15 +383,16 @@
 
         /* results / balances */
         .results-area {
-            background: #e9f2fa;
+            background: var(--balance-bg);
             border-radius: 28px;
             padding: 22px 24px;
             margin-top: 10px;
+            border: 1px solid var(--border-color);
         }
         .results-area h2 {
             font-size: 1.25rem;
             margin: 0 0 16px 0;
-            color: #16344a;
+            color: var(--results-text);
         }
         .balance-list {
             display: flex;
@@ -330,24 +403,24 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: white;
+            background: var(--card-bg);
             padding: 10px 20px;
             border-radius: 60px;
             font-size: 0.95rem;
             font-weight: 500;
             box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-            border: 1px solid #deecf7;
+            border: 1px solid var(--input-border);
             flex-wrap: wrap;
         }
-        .balance-item .name { font-weight: 600; color: #1e3f55; }
+        .balance-item .name { font-weight: 600; color: var(--text-main); }
         .balance-item .owes {
-            color: #b13e3e; background: #ffe9e9; padding: 4px 16px; border-radius: 40px; font-weight: 600;
+            color: var(--owes-text); background: var(--owes-bg); padding: 4px 16px; border-radius: 40px; font-weight: 600;
         }
         .balance-item .gets {
-            color: #1c7a4b; background: #e2f5e9; padding: 4px 16px; border-radius: 40px; font-weight: 600;
+            color: var(--gets-text); background: var(--gets-bg); padding: 4px 16px; border-radius: 40px; font-weight: 600;
         }
         .balance-item .settled {
-            color: #6d8b9c; background: #edf3f8; padding: 4px 16px; border-radius: 40px; font-weight: 500;
+            color: var(--settled-text); background: var(--settled-bg); padding: 4px 16px; border-radius: 40px; font-weight: 500;
         }
 
         /* sheets section */
@@ -355,55 +428,35 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
+            justify-content: center;
             gap: 12px;
-            background: #ffffffd0;
+            background: var(--sheets-bar-bg);
             backdrop-filter: blur(4px);
             border-radius: 80px;
             padding: 12px 20px;
             margin-top: 28px;
-            border: 1px solid #ffffff;
+            border: 1px solid var(--border-color);
             box-shadow: 0 4px 12px -4px rgba(0,0,0,0.08);
-        }
-        .sheets-bar label {
-            font-weight: 500;
-            color: #305d7a;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .sheets-bar input {
-            flex: 1;
-            min-width: 200px;
-            padding: 12px 18px;
-            border-radius: 60px;
-            border: 1px solid #cddde9;
-            background: #ffffff;
-            font-size: 0.9rem;
-            outline: none;
-        }
-        .sheets-bar input:focus {
-            border-color: #5d9bc7;
-            box-shadow: 0 0 0 3px #d0e5f5;
         }
         .status-msg {
             font-size: 0.85rem;
-            color: #3b6b8b;
-            background: #e3f0fa;
-            padding: 6px 16px;
+            color: var(--paidby-text);
+            background: var(--paidby-bg);
+            padding: 8px 20px;
             border-radius: 40px;
             display: inline-block;
+            font-weight: 500;
         }
         .footnote {
             text-align: center;
             font-size: 0.75rem;
-            color: #7b95a8;
+            color: var(--stat-label);
             margin-top: 24px;
         }
 
         /* misc */
         .empty-message {
-            color: #8b9eac;
+            color: var(--stat-label);
             font-style: italic;
             text-align: center;
             padding: 20px 0;
@@ -411,15 +464,15 @@
         }
         .scroll-thin::-webkit-scrollbar { width: 6px; }
         .scroll-thin::-webkit-scrollbar-track { background: transparent; }
-        .scroll-thin::-webkit-scrollbar-thumb { background: #b9cfdf; border-radius: 20px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 20px; }
         .total-spent {
             font-size: 1rem;
             font-weight: 600;
-            color: #1f4f6b;
+            color: var(--results-text);
             margin-bottom: 14px;
             display: flex;
             justify-content: space-between;
-            border-bottom: 1px dashed #b9d2e6;
+            border-bottom: 1px dashed var(--input-border);
             padding-bottom: 10px;
         }
         .flex-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -429,11 +482,12 @@
 <div class="app-card">
     <h1>
         ✈️🍕 Trip & Food Splitter
-        <span style="font-size: 0.85rem; background: #d9e7f2; padding: 6px 18px; border-radius: 60px; font-weight: 500; color: #20587a; margin-left: auto;">dashboard + sheets</span>
+        <span style="font-size: 0.85rem; background: var(--paidby-bg); padding: 6px 18px; border-radius: 60px; font-weight: 500; color: var(--paidby-text); margin-left: auto;">dashboard + sheets</span>
     </h1>
     <div class="subhead">
         <span>Split trip costs & meals — with live dashboard and Google Sheets export.</span>
         <div class="flex-row">
+            <button id="themeToggleBtn" class="btn-outline">🌙 Dark Mode</button>
             <button id="resetAllBtn" class="btn-outline">⟲ Reset all</button>
         </div>
     </div>
@@ -452,12 +506,12 @@
         </div>
         <div class="stat-card">
             <div class="label">💰 Total spent</div>
-            <div class="value" id="dashTotalSpent">$0</div>
+            <div class="value" id="dashTotalSpent">₹0</div>
             <div class="sub">all expenses</div>
         </div>
         <div class="stat-card">
             <div class="label">⚖️ Fair share</div>
-            <div class="value" id="dashFairShare">$0</div>
+            <div class="value" id="dashFairShare">₹0</div>
             <div class="sub">per person (equal)</div>
         </div>
     </div>
@@ -482,7 +536,7 @@
                     <input type="text" id="expenseDesc" placeholder="Dinner, taxi, Airbnb..." maxlength="40">
                 </div>
                 <div class="form-row">
-                    <label for="expenseAmount">Amount</label>
+                    <label for="expenseAmount">Amount (₹)</label>
                     <input type="number" id="expenseAmount" placeholder="0.00" min="0.01" step="0.01">
                 </div>
                 <div class="form-row">
@@ -500,25 +554,46 @@
         <h2>💰 Who owes / gets what</h2>
         <div id="totalSpentDisplay" class="total-spent">
             <span>Total spent</span>
-            <span id="totalSpentAmount">$0.00</span>
+            <span id="totalSpentAmount">₹0.00</span>
         </div>
         <div id="balanceList" class="balance-list"></div>
     </div>
 
-    <!-- GOOGLE SHEETS INTEGRATION -->
+    <!-- GOOGLE SHEETS INTEGRATION (Hardcoded URL) -->
     <div class="sheets-bar">
-        <label>📎 Google Sheets URL</label>
-        <input type="text" id="sheetsUrlInput" placeholder="Paste your Google Sheets web app URL or export link..." />
-        <button id="pushToSheetsBtn" class="btn-primary" style="padding: 12px 24px;">⬆️ Export to Sheets</button>
+        <button id="pushToSheetsBtn" class="btn-primary" style="padding: 14px 28px; font-size: 1.05rem;">
+            ⬆️ Export to Google Sheets
+        </button>
         <span id="sheetsStatus" class="status-msg">Ready</span>
-    </div>
-    <div class="footnote">
-        <strong>Google Sheets:</strong> provide a web app URL that accepts a POST with JSON (e.g., Google Apps Script). Data is sent as <code>{ friends, expenses, total, fairShare, balances }</code>.
     </div>
 </div>
 
 <script>
     (function() {
+        // 🔗 YOUR GOOGLE SHEETS WEB APP URL IS HARDCODED HERE
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzGJsIx5xxJcIyQwGBbrBXfrRDQPJr4L0Jq0TKpSDMCYLQbbFNAV6IJK1tkn2Rica8HHg/exec";
+
+        // ---------- THEME TOGGLE ----------
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const body = document.body;
+
+        // Check local storage for saved theme
+        if (localStorage.getItem('theme') === 'dark') {
+            body.classList.add('dark-mode');
+            themeToggleBtn.textContent = '☀️ Light Mode';
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            if (body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeToggleBtn.textContent = '☀️ Light Mode';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeToggleBtn.textContent = '🌙 Dark Mode';
+            }
+        });
+
         // ---------- STATE ----------
         let friends = [];
         let expenses = [];          // { id, description, amount, paidBy }
@@ -546,7 +621,6 @@
         const dashFairShare = document.getElementById('dashFairShare');
 
         // Sheets elements
-        const sheetsUrlInput = document.getElementById('sheetsUrlInput');
         const pushToSheetsBtn = document.getElementById('pushToSheetsBtn');
         const sheetsStatus = document.getElementById('sheetsStatus');
 
@@ -627,7 +701,7 @@
                 expenseListEl.innerHTML = expenses.map(exp => `
                     <div class="expense-item">
                         <span class="desc">${escapeHtml(exp.description)}</span>
-                        <span class="amount">$${exp.amount.toFixed(2)}</span>
+                        <span class="amount">₹${exp.amount.toFixed(2)}</span>
                         <span class="paidby">${escapeHtml(exp.paidBy)}</span>
                         <button class="delete-expense" data-id="${exp.id}" title="Delete expense">✕</button>
                     </div>
@@ -649,9 +723,9 @@
             const total = expenses.reduce((sum, e) => sum + e.amount, 0);
             const fairShare = friends.length ? total / friends.length : 0;
 
-            dashTotalSpent.textContent = `$${total.toFixed(2)}`;
-            dashFairShare.textContent = friends.length ? `$${fairShare.toFixed(2)}` : '$0.00';
-            totalSpentAmountEl.textContent = `$${total.toFixed(2)}`;
+            dashTotalSpent.textContent = `₹${total.toFixed(2)}`;
+            dashFairShare.textContent = friends.length ? `₹${fairShare.toFixed(2)}` : '₹0.00';
+            totalSpentAmountEl.textContent = `₹${total.toFixed(2)}`;
 
             // --- balances ---
             if (friends.length === 0) {
@@ -684,8 +758,8 @@
             balanceListEl.innerHTML = balances.map(item => {
                 const bal = item.balance;
                 let cls = 'settled', text = 'settled';
-                if (bal > 0.005) { cls = 'gets'; text = `gets $${bal.toFixed(2)}`; }
-                else if (bal < -0.005) { cls = 'owes'; text = `owes $${Math.abs(bal).toFixed(2)}`; }
+                if (bal > 0.005) { cls = 'gets'; text = `gets ₹${bal.toFixed(2)}`; }
+                else if (bal < -0.005) { cls = 'owes'; text = `owes ₹${Math.abs(bal).toFixed(2)}`; }
                 return `<div class="balance-item">
                             <span class="name">${escapeHtml(item.name)}</span>
                             <span class="${cls}">${text}</span>
@@ -759,12 +833,6 @@
 
         // ---------- GOOGLE SHEETS EXPORT ----------
         async function pushToGoogleSheets() {
-            const url = sheetsUrlInput.value.trim();
-            if (!url) {
-                sheetsStatus.textContent = '⚠️ Please enter a Google Sheets URL.';
-                sheetsStatus.style.background = '#ffe6e6';
-                return;
-            }
             if (friends.length === 0 && expenses.length === 0) {
                 sheetsStatus.textContent = '⚠️ No data to export.';
                 sheetsStatus.style.background = '#ffe6e6';
@@ -796,13 +864,10 @@
             };
 
             sheetsStatus.textContent = '⏳ Sending...';
-            sheetsStatus.style.background = '#e3f0fa';
+            sheetsStatus.style.background = 'var(--paidby-bg)';
 
             try {
-                // Try fetch with CORS (Google Apps Script often needs 'no-cors' or proper CORS)
-                // We'll attempt a normal POST with JSON; for Apps Script you typically need to handle CORS.
-                // If it fails, we fallback to a simple copy approach.
-                const response = await fetch(url, {
+                const response = await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
                     mode: 'cors',
                     headers: { 'Content-Type': 'application/json' },
@@ -811,20 +876,22 @@
 
                 if (response.ok) {
                     sheetsStatus.textContent = '✅ Exported successfully!';
-                    sheetsStatus.style.background = '#e2f5e9';
+                    sheetsStatus.style.background = 'var(--gets-bg)';
+                    sheetsStatus.style.color = 'var(--gets-text)';
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
             } catch (err) {
                 console.warn('CORS/fetch error:', err);
-                // Fallback: copy JSON to clipboard for manual paste
                 try {
                     await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-                    sheetsStatus.textContent = '📋 Copied JSON to clipboard (CORS blocked). Paste into your sheet.';
+                    sheetsStatus.textContent = '📋 Copied JSON (CORS blocked).';
                     sheetsStatus.style.background = '#fff3d6';
+                    sheetsStatus.style.color = '#b38f00';
                 } catch (clipErr) {
-                    sheetsStatus.textContent = '❌ Export failed. Use browser console to copy data.';
+                    sheetsStatus.textContent = '❌ Export failed.';
                     sheetsStatus.style.background = '#ffe6e6';
+                    sheetsStatus.style.color = '#b13e3e';
                     console.log('Payload:', payload);
                 }
             }
@@ -857,16 +924,15 @@
         });
 
         resetAllBtn.addEventListener('click', resetAll);
-
         pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
 
         // ---------- INITIAL DEMO DATA ----------
         function initDemo() {
             friends = ['Alex', 'Sam', 'Jordan'];
             expenses = [
-                { id: nextExpenseId++, description: 'Pizza night', amount: 45.50, paidBy: 'Alex' },
-                { id: nextExpenseId++, description: 'Taxi to airport', amount: 30.00, paidBy: 'Sam' },
-                { id: nextExpenseId++, description: 'Airbnb (2 nights)', amount: 200.00, paidBy: 'Jordan' },
+                { id: nextExpenseId++, description: 'Pizza night', amount: 1200.00, paidBy: 'Alex' },
+                { id: nextExpenseId++, description: 'Taxi to airport', amount: 850.00, paidBy: 'Sam' },
+                { id: nextExpenseId++, description: 'Airbnb (2 nights)', amount: 5000.00, paidBy: 'Jordan' },
             ];
             renderAll();
         }
