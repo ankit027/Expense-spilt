@@ -892,7 +892,7 @@
                 return;
             }
 
-            // If we are currently creating an expense, default to all checked
+            // Default to all checked
             splitCheckboxesContainer.innerHTML = group.friends.map(name => `
                 <label class="split-checkbox">
                     <input type="checkbox" class="split-cb" value="${escapeHtml(name)}" checked>
@@ -902,4 +902,382 @@
         }
 
         // Show/Hide Custom Split based on dropdown
-        splitTypeSelect.addEventListener('change
+        splitTypeSelect.addEventListener('change', () => {
+            if (splitTypeSelect.value === 'custom') {
+                customSplitArea.style.display = 'block';
+                renderSplitCheckboxes();
+            } else {
+                customSplitArea.style.display = 'none';
+            }
+        });
+
+        function renderExpenses() {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            if (group.expenses.length === 0) {
+                expenseListEl.innerHTML = `<div class="empty-message">No expenses yet. Add one above.</div>`;
+            } else {
+                expenseListEl.innerHTML = group.expenses.map(exp => {
+                    let splitInfo = "";
+                    if (exp.splitWith && exp.splitWith.length > 0) {
+                        if (exp.splitWith.length === group.friends.length && group.friends.every(f => exp.splitWith.includes(f))) {
+                            splitInfo = "Split with: Whole Group";
+                        } else {
+                            splitInfo = "Split with: " + exp.splitWith.join(", ");
+                        }
+                    }
+                    
+                    return `
+                    <div class="expense-item">
+                        <div class="expense-main">
+                            <span class="desc">${escapeHtml(exp.description)}</span>
+                            <span class="amount">₹${exp.amount.toFixed(2)}</span>
+                            <span class="paidby">Paid by: ${escapeHtml(exp.paidBy)}</span>
+                            <button class="delete-expense" data-id="${exp.id}" title="Delete expense">✕</button>
+                        </div>
+                        <div class="expense-split-info">${splitInfo}</div>
+                    </div>
+                `}).join('');
+            }
+            expenseCountBadge.textContent = group.expenses.length;
+            dashExpenseCount.textContent = group.expenses.length;
+
+            document.querySelectorAll('.delete-expense').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.target.dataset.id);
+                    if (!isNaN(id)) deleteExpense(id);
+                });
+            });
+        }
+
+        function renderDashboardAndBalances() {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            // --- dashboard ---
+            const total = group.expenses.reduce((sum, e) => sum + e.amount, 0);
+            const fairShare = group.friends.length ? total / group.friends.length : 0;
+
+            dashTotalSpent.textContent = `₹${total.toFixed(2)}`;
+            dashFairShare.textContent = group.friends.length ? `₹${fairShare.toFixed(2)}` : '₹0.00';
+            totalSpentAmountEl.textContent = `₹${total.toFixed(2)}`;
+
+            // --- balances ---
+            if (group.friends.length === 0) {
+                balanceListEl.innerHTML = `<div class="empty-message">Add friends and expenses to see balances.</div>`;
+                return;
+            }
+
+            if (group.expenses.length === 0) {
+                balanceListEl.innerHTML = `<div class="empty-message">No expenses to split yet.</div>`;
+                return;
+            }
+
+            // Custom balance logic
+            const balances = {};
+            group.friends.forEach(f => balances[f] = 0);
+
+            group.expenses.forEach(exp => {
+                const amount = exp.amount;
+                const paidBy = exp.paidBy;
+                const splitWith = exp.splitWith || group.friends; // fallback to whole group
+                
+                if (splitWith.length === 0) return;
+
+                const splitAmount = amount / splitWith.length;
+
+                // Add what they paid
+                if (balances[paidBy] !== undefined) {
+                    balances[paidBy] += amount;
+                }
+
+                // Subtract what they owe (their share)
+                splitWith.forEach(person => {
+                    if (balances[person] !== undefined) {
+                        balances[person] -= splitAmount;
+                    }
+                });
+            });
+
+            const sortedBalances = group.friends.map(friend => ({
+                name: friend,
+                balance: balances[friend]
+            })).sort((a, b) => a.balance - b.balance);
+
+            balanceListEl.innerHTML = sortedBalances.map(item => {
+                const bal = item.balance;
+                let cls = 'settled', text = 'settled';
+                if (bal > 0.005) { cls = 'gets'; text = `gets ₹${bal.toFixed(2)}`; }
+                else if (bal < -0.005) { cls = 'owes'; text = `owes ₹${Math.abs(bal).toFixed(2)}`; }
+                return `<div class="balance-item">
+                            <span class="name">${escapeHtml(item.name)}</span>
+                            <span class="${cls}">${text}</span>
+                        </div>`;
+            }).join('');
+        }
+
+        function renderAll() {
+            renderFriends();
+            renderExpenses();
+            renderDashboardAndBalances();
+        }
+
+        // ---------- ACTIONS ----------
+
+        function addFriend(name) {
+            const group = getActiveGroup();
+            if (!group) return false;
+            
+            const trimmed = name.trim();
+            if (trimmed === '') return false;
+            if (group.friends.includes(trimmed)) {
+                alert(`Friend "${trimmed}" already exists in this group.`);
+                return false;
+            }
+            group.friends.push(trimmed);
+            renderAll();
+            saveData();
+            return true;
+        }
+
+        function removeFriend(index) {
+            const group = getActiveGroup();
+            if (!group || index < 0 || index >= group.friends.length) return;
+            
+            const removed = group.friends[index];
+            if (group.expenses.some(e => e.paidBy === removed || (e.splitWith && e.splitWith.includes(removed)))) {
+                if (!confirm(`"${removed}" is part of some expenses. Remove anyway? Those expenses might need adjustments.`)) return;
+            }
+            group.friends.splice(index, 1);
+            
+            // Also remove from any splitWith arrays
+            group.expenses.forEach(exp => {
+                if (exp.splitWith) {
+                    exp.splitWith = exp.splitWith.filter(n => n !== removed);
+                }
+            });
+
+            renderAll();
+            saveData();
+        }
+
+        function addExpense(desc, amount, paidBy, splitType) {
+            const group = getActiveGroup();
+            if (!group) return false;
+
+            if (!desc.trim()) { alert('Please enter a description.'); return false; }
+            const amt = parseFloat(amount);
+            if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return false; }
+            if (!paidBy || !group.friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
+
+            let splitWith = [];
+            if (splitType === 'group') {
+                splitWith = [...group.friends];
+            } else {
+                const checkboxes = document.querySelectorAll('.split-cb:checked');
+                splitWith = Array.from(checkboxes).map(cb => cb.value);
+                if (splitWith.length === 0) {
+                    alert('Please select at least one person to split with.');
+                    return false;
+                }
+            }
+
+            group.expenses.push({
+                id: group.nextExpenseId++,
+                description: desc.trim(),
+                amount: amt,
+                paidBy,
+                splitWith
+            });
+            renderAll();
+            saveData();
+            return true;
+        }
+
+        function deleteExpense(id) {
+            const group = getActiveGroup();
+            if (!group) return;
+            group.expenses = group.expenses.filter(e => e.id !== id);
+            renderAll();
+            saveData();
+        }
+
+        function resetGroup() {
+            const group = getActiveGroup();
+            if (!group) return;
+            if (group.friends.length === 0 && group.expenses.length === 0) return;
+            
+            if (confirm(`Delete all friends and expenses in "${group.name}"? This cannot be undone.`)) {
+                group.friends = [];
+                group.expenses = [];
+                group.nextExpenseId = 1;
+                newFriendNameInput.value = '';
+                expenseDescInput.value = '';
+                expenseAmountInput.value = '';
+                renderAll();
+                saveData();
+            }
+        }
+
+        // ---------- GROUPS ----------
+        function createGroup() {
+            const name = prompt("Enter a name for the new group/trip (e.g., Goa Trip, Office Lunch):");
+            if (!name || name.trim() === '') return;
+            
+            const newGroup = {
+                id: 'group_' + Date.now(),
+                name: name.trim(),
+                friends: [],
+                expenses: [],
+                nextExpenseId: 1
+            };
+            groups.push(newGroup);
+            activeGroupId = newGroup.id;
+            
+            renderGroupSelect();
+            renderAll();
+            saveData();
+        }
+
+        function deleteGroup() {
+            const group = getActiveGroup();
+            if (!group) return;
+            if (groups.length === 1) {
+                alert("You must have at least one group. Create another one before deleting this.");
+                return;
+            }
+            if (confirm(`Are you sure you want to delete the entire group "${group.name}"?`)) {
+                groups = groups.filter(g => g.id !== activeGroupId);
+                activeGroupId = groups[0].id;
+                renderGroupSelect();
+                renderAll();
+                saveData();
+            }
+        }
+
+        // ---------- GOOGLE SHEETS EXPORT ----------
+        async function pushToGoogleSheets() {
+            const group = getActiveGroup();
+            if (!group) return;
+
+            if (group.friends.length === 0 && group.expenses.length === 0) {
+                sheetsStatus.textContent = '⚠️ No data to export.';
+                sheetsStatus.style.background = '#ffe6e6';
+                return;
+            }
+
+            // Recalculate balances for export
+            const balances = {};
+            group.friends.forEach(f => balances[f] = 0);
+            group.expenses.forEach(exp => {
+                const amount = exp.amount;
+                const paidBy = exp.paidBy;
+                const splitWith = exp.splitWith || group.friends;
+                if (splitWith.length === 0) return;
+                const splitAmount = amount / splitWith.length;
+                if (balances[paidBy] !== undefined) balances[paidBy] += amount;
+                splitWith.forEach(person => {
+                    if (balances[person] !== undefined) balances[person] -= splitAmount;
+                });
+            });
+
+            const total = group.expenses.reduce((s, e) => s + e.amount, 0);
+            const payload = {
+                groupName: group.name,
+                friends: group.friends,
+                expenses: group.expenses.map(e => ({ 
+                    description: e.description, 
+                    amount: e.amount, 
+                    paidBy: e.paidBy,
+                    splitWith: e.splitWith 
+                })),
+                total: Number(total.toFixed(2)),
+                balances: group.friends.map(f => ({ name: f, balance: Number(balances[f].toFixed(2)) })),
+                exportedAt: new Date().toISOString()
+            };
+
+            sheetsStatus.textContent = '⏳ Sending...';
+            sheetsStatus.style.background = 'var(--paidby-bg)';
+
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    sheetsStatus.textContent = '✅ Exported successfully!';
+                    sheetsStatus.style.background = 'var(--gets-bg)';
+                    sheetsStatus.style.color = 'var(--gets-text)';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (err) {
+                console.warn('CORS/fetch error:', err);
+                try {
+                    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+                    sheetsStatus.textContent = '📋 Copied JSON (CORS blocked).';
+                    sheetsStatus.style.background = '#fff3d6';
+                    sheetsStatus.style.color = '#b38f00';
+                } catch (clipErr) {
+                    sheetsStatus.textContent = '❌ Export failed.';
+                    sheetsStatus.style.background = '#ffe6e6';
+                    sheetsStatus.style.color = '#b13e3e';
+                    console.log('Payload:', payload);
+                }
+            }
+        }
+
+        // ---------- EVENT LISTENERS ----------
+
+        groupSelect.addEventListener('change', (e) => {
+            activeGroupId = e.target.value;
+            // Reset split type to group when changing groups
+            splitTypeSelect.value = 'group';
+            customSplitArea.style.display = 'none';
+            renderAll();
+            saveData();
+        });
+
+        newGroupBtn.addEventListener('click', createGroup);
+        deleteGroupBtn.addEventListener('click', deleteGroup);
+        resetAllBtn.addEventListener('click', resetGroup);
+
+        addFriendBtn.addEventListener('click', () => {
+            if (addFriend(newFriendNameInput.value)) {
+                newFriendNameInput.value = '';
+                newFriendNameInput.focus();
+            }
+        });
+        newFriendNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addFriendBtn.click(); }
+        });
+
+        addExpenseBtn.addEventListener('click', () => {
+            if (addExpense(expenseDescInput.value, expenseAmountInput.value, expensePaidBySelect.value, splitTypeSelect.value)) {
+                expenseDescInput.value = '';
+                expenseAmountInput.value = '';
+                expenseDescInput.focus();
+                // Reset split type
+                splitTypeSelect.value = 'group';
+                customSplitArea.style.display = 'none';
+            }
+        });
+        expenseDescInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+        });
+        expenseAmountInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+        });
+
+        pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
+
+        // ---------- START ----------
+        init();
+    })();
+</script>
+</body>
+</html>
