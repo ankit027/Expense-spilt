@@ -38,6 +38,7 @@
             --settled-text: #6d8b9c;
             --shadow-color: rgba(0, 20, 30, 0.15);
             --sheets-bar-bg: #ffffffd0;
+            --checkbox-bg: #f0f5fa;
         }
 
         body.dark-mode {
@@ -72,6 +73,7 @@
             --settled-text: #8ba3b8;
             --shadow-color: rgba(0, 0, 0, 0.4);
             --sheets-bar-bg: rgba(30, 42, 54, 0.9);
+            --checkbox-bg: #243444;
         }
 
         * {
@@ -138,9 +140,7 @@
             max-width: 300px;
             cursor: pointer;
         }
-        .group-selector select:focus {
-            border-color: var(--btn-primary);
-        }
+        .group-selector select:focus { border-color: var(--btn-primary); }
 
         h1 {
             font-size: 2.1rem;
@@ -240,7 +240,7 @@
             gap: 26px;
             margin-bottom: 26px;
         }
-        @media (max-width: 750px) {
+        @media (max-width: 850px) {
             .grid-2col { grid-template-columns: 1fr; gap: 20px; }
             .app-card { padding: 22px 18px; }
             h1 { font-size: 1.8rem; }
@@ -368,6 +368,39 @@
             box-shadow: 0 0 0 3px var(--paidby-bg);
         }
 
+        /* Custom Split Checkboxes */
+        .split-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+            padding: 10px;
+            background: var(--checkbox-bg);
+            border-radius: 16px;
+            border: 1px solid var(--input-border);
+        }
+        .split-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-main);
+            cursor: pointer;
+            background: var(--input-bg);
+            padding: 6px 12px;
+            border-radius: 30px;
+            border: 1px solid var(--input-border);
+            transition: all 0.15s;
+        }
+        .split-checkbox:hover { border-color: var(--btn-primary); }
+        .split-checkbox input[type="checkbox"] {
+            accent-color: var(--btn-primary);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
         /* expense list */
         .expense-list {
             margin-top: 8px;
@@ -379,14 +412,20 @@
         }
         .expense-item {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            gap: 6px;
             background: var(--expense-bg);
-            border-radius: 60px;
-            padding: 8px 16px;
+            border-radius: 20px;
+            padding: 10px 16px;
             border: 1px solid var(--input-border);
             font-size: 0.9rem;
+        }
+        .expense-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             flex-wrap: wrap;
+            width: 100%;
         }
         .expense-item .desc {
             font-weight: 600;
@@ -409,6 +448,13 @@
             color: var(--paidby-text);
             font-weight: 500;
             font-size: 0.85rem;
+        }
+        .expense-split-info {
+            font-size: 0.75rem;
+            color: var(--stat-label);
+            margin-left: 5px;
+            font-style: italic;
+            width: 100%;
         }
         .delete-expense {
             background: none;
@@ -487,12 +533,6 @@
             display: inline-block;
             font-weight: 500;
         }
-        .footnote {
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--stat-label);
-            margin-top: 24px;
-        }
 
         /* misc */
         .empty-message {
@@ -538,7 +578,7 @@
         ✈️🍕 Trip & Food Splitter
     </h1>
     <div class="subhead">
-        <span>Split trip costs & meals — with live dashboard and Google Sheets export.</span>
+        <span>Split trip costs & meals — with custom split logic and Google Sheets export.</span>
         <div class="flex-row">
             <button id="resetAllBtn" class="btn-outline">⟲ Reset Current Group</button>
         </div>
@@ -562,9 +602,9 @@
             <div class="sub">all expenses</div>
         </div>
         <div class="stat-card">
-            <div class="label">⚖️ Fair share</div>
+            <div class="label">⚖️ Avg. Share</div>
             <div class="value" id="dashFairShare">₹0</div>
-            <div class="sub">per person (equal)</div>
+            <div class="sub">(group average)</div>
         </div>
     </div>
 
@@ -574,7 +614,7 @@
             <h2>👥 Friends in this Group <span class="badge" id="friendCountBadge">0</span></h2>
             <div id="friendList" class="friend-list scroll-thin"></div>
             <div class="add-friend-row">
-                <input type="text" id="newFriendName" placeholder="e.g. Rahul" maxlength="30">
+                <input type="text" id="newFriendName" placeholder="e.g. Ankit" maxlength="30">
                 <button id="addFriendBtn" class="btn-primary" style="padding: 12px 22px;">➕ Add</button>
             </div>
         </div>
@@ -595,7 +635,24 @@
                     <label for="expensePaidBy">Paid by</label>
                     <select id="expensePaidBy"></select>
                 </div>
-                <button class="btn-primary" id="addExpenseBtn">➕ Add expense</button>
+                
+                <!-- NEW: Paid For Selection -->
+                <div class="form-row" style="margin-top: 5px;">
+                    <label for="splitType">Paid for</label>
+                    <select id="splitType">
+                        <option value="group">Whole Group</option>
+                        <option value="custom">Custom Selection</option>
+                    </select>
+                </div>
+
+                <!-- Custom Checkboxes (Hidden by default) -->
+                <div id="customSplitArea" style="display: none; margin-top: 5px;">
+                    <div id="splitCheckboxes" class="split-container">
+                        <!-- Checkboxes injected here -->
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="addExpenseBtn" style="margin-top: 10px;">➕ Add expense</button>
             </div>
             <div id="expenseList" class="expense-list scroll-thin"></div>
         </div>
@@ -611,7 +668,7 @@
         <div id="balanceList" class="balance-list"></div>
     </div>
 
-    <!-- GOOGLE SHEETS INTEGRATION (Hardcoded URL) -->
+    <!-- GOOGLE SHEETS INTEGRATION -->
     <div class="sheets-bar">
         <button id="pushToSheetsBtn" class="btn-primary" style="padding: 14px 28px; font-size: 1.05rem;">
             ⬆️ Export to Google Sheets
@@ -622,7 +679,6 @@
 
 <script>
     (function() {
-        // 🔗 YOUR GOOGLE SHEETS WEB APP URL IS HARDCODED HERE
         const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzGJsIx5xxJcIyQwGBbrBXfrRDQPJr4L0Jq0TKpSDMCYLQbbFNAV6IJK1tkn2Rica8HHg/exec";
 
         // ---------- THEME TOGGLE ----------
@@ -646,7 +702,6 @@
         });
 
         // ---------- STATE ----------
-        // Structure: { id, name, friends: [], expenses: [], nextExpenseId }
         let groups = [];
         let activeGroupId = null;
 
@@ -663,7 +718,11 @@
         const expenseDescInput = document.getElementById('expenseDesc');
         const expenseAmountInput = document.getElementById('expenseAmount');
         const expensePaidBySelect = document.getElementById('expensePaidBy');
+        const splitTypeSelect = document.getElementById('splitType');
+        const customSplitArea = document.getElementById('customSplitArea');
+        const splitCheckboxesContainer = document.getElementById('splitCheckboxes');
         const addExpenseBtn = document.getElementById('addExpenseBtn');
+        
         const expenseListEl = document.getElementById('expenseList');
         const expenseCountBadge = document.getElementById('expenseCountBadge');
         
@@ -729,22 +788,13 @@
                 {
                     id: 'group_1',
                     name: 'Mumbai Trip',
-                    friends: ['Rahul', 'Amit', 'Priya'],
+                    friends: ['Ankit', 'Rahul', 'Priya', 'Amit'],
                     expenses: [
-                        { id: 1, description: 'Taxi to airport', amount: 850, paidBy: 'Rahul' },
-                        { id: 2, description: 'Hotel booking', amount: 4500, paidBy: 'Amit' },
-                        { id: 3, description: 'Dinner at Marine Drive', amount: 1200, paidBy: 'Priya' }
+                        { id: 1, description: 'Ankit & Rahul Taxi', amount: 500, paidBy: 'Ankit', splitWith: ['Ankit', 'Rahul'] },
+                        { id: 2, description: 'Hotel booking (Everyone)', amount: 4000, paidBy: 'Amit', splitWith: ['Ankit', 'Rahul', 'Priya', 'Amit'] },
+                        { id: 3, description: 'Priya & Ankit Dinner', amount: 1000, paidBy: 'Priya', splitWith: ['Ankit', 'Priya'] }
                     ],
                     nextExpenseId: 4
-                },
-                {
-                    id: 'group_2',
-                    name: 'Office Lunch',
-                    friends: ['Sam', 'John'],
-                    expenses: [
-                        { id: 1, description: 'Pizza', amount: 600, paidBy: 'Sam' }
-                    ],
-                    nextExpenseId: 2
                 }
             ];
             activeGroupId = 'group_1';
@@ -785,8 +835,19 @@
                         e.target.value = group.friends[idx];
                         return;
                     }
+                    const oldName = group.friends[idx];
                     group.friends[idx] = newName;
+                    
+                    // Update splitWith arrays if friend was renamed
+                    group.expenses.forEach(exp => {
+                        if (exp.splitWith && exp.splitWith.includes(oldName)) {
+                            exp.splitWith = exp.splitWith.map(n => n === oldName ? newName : n);
+                        }
+                        if (exp.paidBy === oldName) exp.paidBy = newName;
+                    });
+
                     updatePaidBySelect();
+                    renderSplitCheckboxes();
                     renderExpenses();
                     renderDashboardAndBalances();
                     saveData();
@@ -801,6 +862,7 @@
             });
 
             updatePaidBySelect();
+            renderSplitCheckboxes();
         }
 
         function updatePaidBySelect() {
@@ -821,314 +883,23 @@
             else if (group.friends.length) expensePaidBySelect.value = group.friends[0];
         }
 
-        function renderExpenses() {
+        function renderSplitCheckboxes() {
             const group = getActiveGroup();
             if (!group) return;
 
-            if (group.expenses.length === 0) {
-                expenseListEl.innerHTML = `<div class="empty-message">No expenses yet. Add one above.</div>`;
-            } else {
-                expenseListEl.innerHTML = group.expenses.map(exp => `
-                    <div class="expense-item">
-                        <span class="desc">${escapeHtml(exp.description)}</span>
-                        <span class="amount">₹${exp.amount.toFixed(2)}</span>
-                        <span class="paidby">${escapeHtml(exp.paidBy)}</span>
-                        <button class="delete-expense" data-id="${exp.id}" title="Delete expense">✕</button>
-                    </div>
-                `).join('');
-            }
-            expenseCountBadge.textContent = group.expenses.length;
-            dashExpenseCount.textContent = group.expenses.length;
-
-            document.querySelectorAll('.delete-expense').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.target.dataset.id);
-                    if (!isNaN(id)) deleteExpense(id);
-                });
-            });
-        }
-
-        function renderDashboardAndBalances() {
-            const group = getActiveGroup();
-            if (!group) return;
-
-            // --- dashboard ---
-            const total = group.expenses.reduce((sum, e) => sum + e.amount, 0);
-            const fairShare = group.friends.length ? total / group.friends.length : 0;
-
-            dashTotalSpent.textContent = `₹${total.toFixed(2)}`;
-            dashFairShare.textContent = group.friends.length ? `₹${fairShare.toFixed(2)}` : '₹0.00';
-            totalSpentAmountEl.textContent = `₹${total.toFixed(2)}`;
-
-            // --- balances ---
             if (group.friends.length === 0) {
-                balanceListEl.innerHTML = `<div class="empty-message">Add friends and expenses to see balances.</div>`;
+                splitCheckboxesContainer.innerHTML = `<span style="font-size:0.8rem; color:var(--stat-label);">Add friends to select split</span>`;
                 return;
             }
 
-            if (group.expenses.length === 0) {
-                balanceListEl.innerHTML = `<div class="empty-message">No expenses to split yet.</div>`;
-                return;
-            }
-
-            const paidMap = new Map();
-            group.friends.forEach(f => paidMap.set(f, 0));
-            group.expenses.forEach(exp => {
-                if (paidMap.has(exp.paidBy)) {
-                    paidMap.set(exp.paidBy, paidMap.get(exp.paidBy) + exp.amount);
-                } else {
-                    paidMap.set(exp.paidBy, exp.amount);
-                }
-            });
-
-            const share = total / group.friends.length;
-            const balances = group.friends.map(friend => ({
-                name: friend,
-                balance: (paidMap.get(friend) || 0) - share
-            }));
-            balances.sort((a, b) => a.balance - b.balance);
-
-            balanceListEl.innerHTML = balances.map(item => {
-                const bal = item.balance;
-                let cls = 'settled', text = 'settled';
-                if (bal > 0.005) { cls = 'gets'; text = `gets ₹${bal.toFixed(2)}`; }
-                else if (bal < -0.005) { cls = 'owes'; text = `owes ₹${Math.abs(bal).toFixed(2)}`; }
-                return `<div class="balance-item">
-                            <span class="name">${escapeHtml(item.name)}</span>
-                            <span class="${cls}">${text}</span>
-                        </div>`;
-            }).join('');
+            // If we are currently creating an expense, default to all checked
+            splitCheckboxesContainer.innerHTML = group.friends.map(name => `
+                <label class="split-checkbox">
+                    <input type="checkbox" class="split-cb" value="${escapeHtml(name)}" checked>
+                    ${escapeHtml(name)}
+                </label>
+            `).join('');
         }
 
-        function renderAll() {
-            renderFriends();
-            renderExpenses();
-            renderDashboardAndBalances();
-        }
-
-        // ---------- ACTIONS ----------
-
-        function addFriend(name) {
-            const group = getActiveGroup();
-            if (!group) return false;
-            
-            const trimmed = name.trim();
-            if (trimmed === '') return false;
-            if (group.friends.includes(trimmed)) {
-                alert(`Friend "${trimmed}" already exists in this group.`);
-                return false;
-            }
-            group.friends.push(trimmed);
-            renderAll();
-            saveData();
-            return true;
-        }
-
-        function removeFriend(index) {
-            const group = getActiveGroup();
-            if (!group || index < 0 || index >= group.friends.length) return;
-            
-            const removed = group.friends[index];
-            if (group.expenses.some(e => e.paidBy === removed)) {
-                if (!confirm(`"${removed}" has paid for expenses. Remove anyway? Their payments will not be credited.`)) return;
-            }
-            group.friends.splice(index, 1);
-            renderAll();
-            saveData();
-        }
-
-        function addExpense(desc, amount, paidBy) {
-            const group = getActiveGroup();
-            if (!group) return false;
-
-            if (!desc.trim()) { alert('Please enter a description.'); return false; }
-            const amt = parseFloat(amount);
-            if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return false; }
-            if (!paidBy || !group.friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
-
-            group.expenses.push({
-                id: group.nextExpenseId++,
-                description: desc.trim(),
-                amount: amt,
-                paidBy
-            });
-            renderAll();
-            saveData();
-            return true;
-        }
-
-        function deleteExpense(id) {
-            const group = getActiveGroup();
-            if (!group) return;
-            group.expenses = group.expenses.filter(e => e.id !== id);
-            renderAll();
-            saveData();
-        }
-
-        function resetGroup() {
-            const group = getActiveGroup();
-            if (!group) return;
-            if (group.friends.length === 0 && group.expenses.length === 0) return;
-            
-            if (confirm(`Delete all friends and expenses in "${group.name}"? This cannot be undone.`)) {
-                group.friends = [];
-                group.expenses = [];
-                group.nextExpenseId = 1;
-                newFriendNameInput.value = '';
-                expenseDescInput.value = '';
-                expenseAmountInput.value = '';
-                renderAll();
-                saveData();
-            }
-        }
-
-        // ---------- GROUPS ----------
-        function createGroup() {
-            const name = prompt("Enter a name for the new group/trip (e.g., Goa Trip, Office Lunch):");
-            if (!name || name.trim() === '') return;
-            
-            const newGroup = {
-                id: 'group_' + Date.now(),
-                name: name.trim(),
-                friends: [],
-                expenses: [],
-                nextExpenseId: 1
-            };
-            groups.push(newGroup);
-            activeGroupId = newGroup.id;
-            
-            renderGroupSelect();
-            renderAll();
-            saveData();
-        }
-
-        function deleteGroup() {
-            const group = getActiveGroup();
-            if (!group) return;
-            if (groups.length === 1) {
-                alert("You must have at least one group. Create another one before deleting this.");
-                return;
-            }
-            if (confirm(`Are you sure you want to delete the entire group "${group.name}"?`)) {
-                groups = groups.filter(g => g.id !== activeGroupId);
-                activeGroupId = groups[0].id;
-                renderGroupSelect();
-                renderAll();
-                saveData();
-            }
-        }
-
-        // ---------- GOOGLE SHEETS EXPORT ----------
-        async function pushToGoogleSheets() {
-            const group = getActiveGroup();
-            if (!group) return;
-
-            if (group.friends.length === 0 && group.expenses.length === 0) {
-                sheetsStatus.textContent = '⚠️ No data to export.';
-                sheetsStatus.style.background = '#ffe6e6';
-                return;
-            }
-
-            const total = group.expenses.reduce((s, e) => s + e.amount, 0);
-            const share = group.friends.length ? total / group.friends.length : 0;
-            const paidMap = new Map();
-            group.friends.forEach(f => paidMap.set(f, 0));
-            group.expenses.forEach(e => {
-                if (paidMap.has(e.paidBy)) paidMap.set(e.paidBy, paidMap.get(e.paidBy) + e.amount);
-                else paidMap.set(e.paidBy, e.amount);
-            });
-            const balances = group.friends.map(f => ({
-                name: f,
-                paid: paidMap.get(f) || 0,
-                balance: (paidMap.get(f) || 0) - share
-            }));
-
-            const payload = {
-                groupName: group.name,
-                friends: group.friends,
-                expenses: group.expenses.map(e => ({ description: e.description, amount: e.amount, paidBy: e.paidBy })),
-                total: Number(total.toFixed(2)),
-                fairShare: Number(share.toFixed(2)),
-                balances: balances.map(b => ({ name: b.name, paid: Number(b.paid.toFixed(2)), balance: Number(b.balance.toFixed(2)) })),
-                exportedAt: new Date().toISOString()
-            };
-
-            sheetsStatus.textContent = '⏳ Sending...';
-            sheetsStatus.style.background = 'var(--paidby-bg)';
-
-            try {
-                const response = await fetch(GOOGLE_SHEET_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (response.ok) {
-                    sheetsStatus.textContent = '✅ Exported successfully!';
-                    sheetsStatus.style.background = 'var(--gets-bg)';
-                    sheetsStatus.style.color = 'var(--gets-text)';
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-            } catch (err) {
-                console.warn('CORS/fetch error:', err);
-                try {
-                    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-                    sheetsStatus.textContent = '📋 Copied JSON (CORS blocked).';
-                    sheetsStatus.style.background = '#fff3d6';
-                    sheetsStatus.style.color = '#b38f00';
-                } catch (clipErr) {
-                    sheetsStatus.textContent = '❌ Export failed.';
-                    sheetsStatus.style.background = '#ffe6e6';
-                    sheetsStatus.style.color = '#b13e3e';
-                    console.log('Payload:', payload);
-                }
-            }
-        }
-
-        // ---------- EVENT LISTENERS ----------
-
-        groupSelect.addEventListener('change', (e) => {
-            activeGroupId = e.target.value;
-            renderAll();
-            saveData();
-        });
-
-        newGroupBtn.addEventListener('click', createGroup);
-        deleteGroupBtn.addEventListener('click', deleteGroup);
-        resetAllBtn.addEventListener('click', resetGroup);
-
-        addFriendBtn.addEventListener('click', () => {
-            if (addFriend(newFriendNameInput.value)) {
-                newFriendNameInput.value = '';
-                newFriendNameInput.focus();
-            }
-        });
-        newFriendNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addFriendBtn.click(); }
-        });
-
-        addExpenseBtn.addEventListener('click', () => {
-            if (addExpense(expenseDescInput.value, expenseAmountInput.value, expensePaidBySelect.value)) {
-                expenseDescInput.value = '';
-                expenseAmountInput.value = '';
-                expenseDescInput.focus();
-            }
-        });
-        expenseDescInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
-        });
-        expenseAmountInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
-        });
-
-        pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
-
-        // ---------- START ----------
-        init();
-    })();
-</script>
-</body>
-</html>
-```
+        // Show/Hide Custom Split based on dropdown
+        splitTypeSelect.addEventListener('change
