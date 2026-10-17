@@ -394,6 +394,31 @@
             cursor: pointer;
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .action-buttons .btn-primary {
+            flex: 1;
+        }
+        .btn-sync {
+            background: #1c7a4b;
+            color: white;
+            border: none;
+            padding: 12px 22px;
+            border-radius: 60px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 8px 16px -8px #1c7a4b;
+            transition: 0.2s;
+        }
+        .btn-sync:hover { background: #145c37; }
+
         .expense-list {
             margin-top: 8px;
             max-height: 300px;
@@ -579,7 +604,6 @@
             <button id="deleteGroupBtn" class="btn-outline" style="color: var(--owes-text); border-color: var(--owes-text);">🗑️</button>
         </div>
         <div class="flex-row">
-            <button id="saveNowBtn" class="btn-outline" style="color: #1c7a4b; border-color: #1c7a4b;">💾 Save Now</button>
             <button id="themeToggleBtn" class="btn-outline">🌙 Dark Mode</button>
         </div>
     </div>
@@ -588,7 +612,7 @@
         ✈️🍕 Trip & Food Splitter
     </h1>
     <div class="subhead">
-        <span>Auto-saves locally. Add expenses, custom splits, and track balances easily.</span>
+        <span>Auto-syncs to Google Sheets & saves locally.</span>
         <div class="flex-row">
             <button id="resetAllBtn" class="btn-outline">⟲ Reset Current Group</button>
         </div>
@@ -655,7 +679,10 @@
                     <div id="splitCheckboxes" class="split-container"></div>
                 </div>
 
-                <button class="btn-primary" id="addExpenseBtn" style="margin-top: 10px;">➕ Add expense</button>
+                <div class="action-buttons">
+                    <button class="btn-primary" id="addExpenseBtn">➕ Add expense</button>
+                    <button class="btn-sync" id="manualSyncBtn" title="Force sync to Google Sheets">💾 Save</button>
+                </div>
             </div>
         </div>
     </div>
@@ -682,11 +709,9 @@
         <div id="expenseList" class="expense-list scroll-thin"></div>
     </div>
 
+    <!-- Google Sync Status Bar -->
     <div class="sheets-bar">
-        <button id="pushToSheetsBtn" class="btn-primary" style="padding: 14px 28px; font-size: 1.05rem;">
-            ⬆️ Export to Google Sheets
-        </button>
-        <span id="sheetsStatus" class="status-msg">Ready</span>
+        <span id="sheetsStatus" class="status-msg">🔄 Auto-sync active</span>
     </div>
 </div>
 
@@ -716,6 +741,7 @@
         let groups = [];
         let activeGroupId = null;
         let currentFilter = 'all';
+        let syncTimeout = null;
 
         const groupSelect = document.getElementById('groupSelect');
         const newGroupBtn = document.getElementById('newGroupBtn');
@@ -733,6 +759,7 @@
         const customSplitArea = document.getElementById('customSplitArea');
         const splitCheckboxesContainer = document.getElementById('splitCheckboxes');
         const addExpenseBtn = document.getElementById('addExpenseBtn');
+        const manualSyncBtn = document.getElementById('manualSyncBtn');
         
         const filterPersonSelect = document.getElementById('filterPerson');
         const expenseListEl = document.getElementById('expenseList');
@@ -740,14 +767,12 @@
         const totalSpentAmountEl = document.getElementById('totalSpentAmount');
         const balanceListEl = document.getElementById('balanceList');
         const resetAllBtn = document.getElementById('resetAllBtn');
-        const saveNowBtn = document.getElementById('saveNowBtn');
 
         const dashFriendCount = document.getElementById('dashFriendCount');
         const dashExpenseCount = document.getElementById('dashExpenseCount');
         const dashTotalSpent = document.getElementById('dashTotalSpent');
         const dashFairShare = document.getElementById('dashFairShare');
 
-        const pushToSheetsBtn = document.getElementById('pushToSheetsBtn');
         const sheetsStatus = document.getElementById('sheetsStatus');
 
         function escapeHtml(text) {
@@ -787,12 +812,19 @@
             renderAll();
         }
 
-        function saveData(showToast = false) {
+        function saveData(triggerSync = true) {
             localStorage.setItem('splitter_groups', JSON.stringify({ groups, activeGroupId }));
-            if (showToast) {
-                const originalText = saveNowBtn.textContent;
-                saveNowBtn.textContent = '✅ Saved!';
-                setTimeout(() => { saveNowBtn.textContent = originalText; }, 2000);
+            
+            if (triggerSync) {
+                // Debounce the sync so it doesn't fire 10 times per second
+                if (syncTimeout) clearTimeout(syncTimeout);
+                sheetsStatus.textContent = '⏳ Waiting to sync...';
+                sheetsStatus.style.background = 'var(--paidby-bg)';
+                sheetsStatus.style.color = 'var(--paidby-text)';
+                
+                syncTimeout = setTimeout(() => {
+                    autoSyncToSheets();
+                }, 1500); // Wait 1.5 seconds after the last action before syncing
             }
         }
 
@@ -1107,7 +1139,7 @@
                 splitWith
             });
             renderAll();
-            saveData();
+            saveData(); // This now triggers the auto-sync
             return true;
         }
 
@@ -1116,7 +1148,7 @@
             if (!group) return;
             group.expenses = group.expenses.filter(e => e.id !== id);
             renderAll();
-            saveData();
+            saveData(); // This now triggers the auto-sync
         }
 
         function resetGroup() {
@@ -1174,16 +1206,21 @@
             }
         }
 
-        // ---------- NEW FIXED GOOGLE SHEETS EXPORT ----------
-        async function pushToGoogleSheets() {
+        // ---------- GOOGLE SHEETS AUTO-SYNC ----------
+        async function autoSyncToSheets() {
             const group = getActiveGroup();
             if (!group) return;
 
             if (group.friends.length === 0 && group.expenses.length === 0) {
-                sheetsStatus.textContent = '⚠️ No data to export.';
-                sheetsStatus.style.background = '#ffe6e6';
+                sheetsStatus.textContent = '⚪ Nothing to sync.';
+                sheetsStatus.style.background = 'var(--settled-bg)';
+                sheetsStatus.style.color = 'var(--settled-text)';
                 return;
             }
+
+            sheetsStatus.textContent = '⏳ Syncing to Google Sheets...';
+            sheetsStatus.style.background = '#fff3d6';
+            sheetsStatus.style.color = '#b38f00';
 
             const balances = {};
             group.friends.forEach(f => balances[f] = 0);
@@ -1214,50 +1251,47 @@
                 exportedAt: new Date().toISOString()
             };
 
-            sheetsStatus.textContent = '⏳ Sending...';
-            sheetsStatus.style.background = 'var(--paidby-bg)';
-
             try {
-                // Use URLSearchParams instead of JSON to avoid CORS preflight block
                 const formData = new URLSearchParams();
                 formData.append('data', JSON.stringify(payload));
 
                 const response = await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
-                    // NO Content-Type header, letting the browser send it as application/x-www-form-urlencoded
                     body: formData
                 });
 
                 if (response.ok) {
-                    sheetsStatus.textContent = '✅ Exported successfully!';
+                    sheetsStatus.textContent = '✅ Auto-synced successfully!';
                     sheetsStatus.style.background = 'var(--gets-bg)';
                     sheetsStatus.style.color = 'var(--gets-text)';
+                    
+                    // Reset status back to normal after 4 seconds
+                    setTimeout(() => {
+                        if (sheetsStatus.textContent === '✅ Auto-synced successfully!') {
+                            sheetsStatus.textContent = '🔄 Auto-sync active';
+                            sheetsStatus.style.background = 'var(--paidby-bg)';
+                            sheetsStatus.style.color = 'var(--paidby-text)';
+                        }
+                    }, 4000);
                 } else {
                     throw new Error(`HTTP ${response.status}`);
                 }
             } catch (err) {
-                console.warn('Fetch error:', err);
-                try {
-                    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-                    sheetsStatus.textContent = '📋 Copied JSON to clipboard.';
-                    sheetsStatus.style.background = '#fff3d6';
-                    sheetsStatus.style.color = '#b38f00';
-                } catch (clipErr) {
-                    sheetsStatus.textContent = '❌ Export failed.';
-                    sheetsStatus.style.background = '#ffe6e6';
-                    sheetsStatus.style.color = '#b13e3e';
-                    console.log('Payload:', payload);
-                }
+                console.warn('Auto-sync failed:', err);
+                sheetsStatus.textContent = '⚠️ Sync failed. (CORS or Offline)';
+                sheetsStatus.style.background = '#ffe6e6';
+                sheetsStatus.style.color = '#b13e3e';
             }
         }
 
+        // ---------- EVENT LISTENERS ----------
         groupSelect.addEventListener('change', (e) => {
             activeGroupId = e.target.value;
             currentFilter = 'all';
             splitTypeSelect.value = 'group';
             customSplitArea.style.display = 'none';
             renderAll();
-            saveData();
+            saveData(false); // Don't sync just because you switched tabs
         });
 
         filterPersonSelect.addEventListener('change', (e) => {
@@ -1268,7 +1302,12 @@
         newGroupBtn.addEventListener('click', createGroup);
         deleteGroupBtn.addEventListener('click', deleteGroup);
         resetAllBtn.addEventListener('click', resetGroup);
-        saveNowBtn.addEventListener('click', () => saveData(true));
+        
+        // Manual Sync Button
+        manualSyncBtn.addEventListener('click', () => {
+            if (syncTimeout) clearTimeout(syncTimeout);
+            autoSyncToSheets();
+        });
 
         addFriendBtn.addEventListener('click', () => {
             if (addFriend(newFriendNameInput.value)) {
@@ -1305,8 +1344,7 @@
             }
         });
 
-        pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
-
+        // ---------- START ----------
         init();
     })();
 </script>
