@@ -1,40 +1,878 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TripSplit Online</title>
-<style>
-body{font-family:system-ui;margin:0;background:#f5f7fb;color:#172033}.app{max-width:850px;margin:auto;padding:18px}
-.card{background:#fff;border:1px solid #e4e8f0;border-radius:16px;padding:16px;margin:12px 0}
-button{padding:10px 14px;border:0;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700}button.secondary{background:#eef0ff;color:#4f46e5}
-input,select{padding:10px;width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.muted{color:#6d778b;font-size:13px}.good{color:#16834b}.bad{color:#c43d4b}
-.person,.expense{padding:11px 0;border-bottom:1px solid #eee}.empty{text-align:center;padding:25px;color:#777}
-#setup{background:#fff4d6;padding:14px;border-radius:14px}.hidden{display:none}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
-</style></head><body><div class="app">
-<h1>Trip<span style="color:#4f46e5">Split</span> ☁️</h1>
-<div id="setup"><b>Connect your Google Sheet API</b><p class="muted">Paste the deployed Apps Script Web App URL once.</p>
-<div class="row"><input id="api" placeholder="https://script.google.com/macros/s/.../exec"><button onclick="connect()">Connect</button></div></div>
-<div id="main" class="hidden"></div></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✈️🍕 Trip & Food Splitter — dashboard + sheets</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: linear-gradient(145deg, #f0f5fa 0%, #e2eaf2 100%);
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app-card {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 44px;
+            box-shadow: 0 30px 55px -18px rgba(0, 20, 30, 0.4), 0 2px 10px 0 rgba(0,0,0,0.05);
+            padding: 30px 32px;
+            border: 1px solid #ffffffcc;
+        }
+        h1 {
+            font-size: 2.1rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #1a2e3b;
+            margin: 0 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .subhead {
+            color: #4b5f6d;
+            font-size: 0.98rem;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn-outline {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-weight: 500;
+            color: #2c4b5c;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.88rem;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        .btn-primary {
+            background: #2c6e9c;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 12px 22px;
+            border-radius: 60px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            box-shadow: 0 8px 16px -8px #2c6e9c;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.2px;
+        }
+        .btn-primary:hover {
+            background: #1f547a;
+        }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* dashboard cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: #ffffffd9;
+            backdrop-filter: blur(4px);
+            border-radius: 28px;
+            padding: 18px 20px;
+            box-shadow: 0 8px 18px -10px rgba(0, 20, 30, 0.15), inset 0 1px 0 #ffffff;
+            border: 1px solid #ffffff;
+        }
+        .stat-card .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #5a7182;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1b3b4e;
+            line-height: 1.2;
+        }
+        .stat-card .sub {
+            font-size: 0.8rem;
+            color: #6f8b9c;
+            margin-top: 6px;
+        }
+
+        /* main two-column */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 26px;
+            margin-bottom: 26px;
+        }
+        @media (max-width: 750px) {
+            .grid-2col { grid-template-columns: 1fr; gap: 20px; }
+            .app-card { padding: 22px 18px; }
+            h1 { font-size: 1.8rem; }
+        }
+        .panel {
+            background: #ffffffd9;
+            backdrop-filter: blur(4px);
+            border-radius: 30px;
+            padding: 22px 22px 24px;
+            box-shadow: 0 8px 18px -6px rgba(0, 20, 30, 0.12), inset 0 1px 0 #ffffff;
+            border: 1px solid #ffffff;
+        }
+        .panel h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            color: #1f3a4b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+        }
+        .panel h2 span.badge {
+            background: #d0e2f0;
+            border-radius: 40px;
+            padding: 2px 12px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #1f4a6b;
+            margin-left: auto;
+        }
+
+        /* friend list */
+        .friend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 14px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .friend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafd;
+            padding: 6px 12px;
+            border-radius: 60px;
+            border: 1px solid #dee7ef;
+        }
+        .friend-item input[type="text"] {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 8px 4px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #1e3343;
+            outline: none;
+        }
+        .remove-friend {
+            background: none;
+            border: none;
+            color: #a0b3c2;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 6px;
+        }
+        .remove-friend:hover { color: #d14b4b; }
+        .add-friend-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .add-friend-row input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 60px;
+            border: 1px solid #cddde9;
+            background: #ffffff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .add-friend-row input:focus {
+            border-color: #5d9bc7;
+            box-shadow: 0 0 0 3px #d0e5f5;
+        }
+
+        /* expense form */
+        .expense-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .form-row label {
+            font-weight: 500;
+            color: #2a475c;
+            font-size: 0.88rem;
+            min-width: 60px;
+        }
+        .form-row input, .form-row select {
+            flex: 1;
+            min-width: 130px;
+            padding: 12px 16px;
+            border-radius: 60px;
+            border: 1px solid #cddde9;
+            background: #ffffff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .form-row input:focus, .form-row select:focus {
+            border-color: #5d9bc7;
+            box-shadow: 0 0 0 3px #d0e5f5;
+        }
+
+        /* expense list */
+        .expense-list {
+            margin-top: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .expense-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f6faff;
+            border-radius: 60px;
+            padding: 8px 16px;
+            border: 1px solid #d9e5f0;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .expense-item .desc {
+            font-weight: 600;
+            color: #1b3b4e;
+            flex: 2;
+            min-width: 100px;
+        }
+        .expense-item .amount {
+            font-weight: 700;
+            color: #1f6e3f;
+            background: #e3f3e9;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+        }
+        .expense-item .paidby {
+            background: #e2ecf9;
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: #2a5b7c;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        .delete-expense {
+            background: none;
+            border: none;
+            color: #b0c4d4;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: auto;
+            padding: 0 6px;
+        }
+        .delete-expense:hover { color: #d14b4b; }
+
+        /* results / balances */
+        .results-area {
+            background: #e9f2fa;
+            border-radius: 28px;
+            padding: 22px 24px;
+            margin-top: 10px;
+        }
+        .results-area h2 {
+            font-size: 1.25rem;
+            margin: 0 0 16px 0;
+            color: #16344a;
+        }
+        .balance-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .balance-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 60px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            border: 1px solid #deecf7;
+            flex-wrap: wrap;
+        }
+        .balance-item .name { font-weight: 600; color: #1e3f55; }
+        .balance-item .owes {
+            color: #b13e3e; background: #ffe9e9; padding: 4px 16px; border-radius: 40px; font-weight: 600;
+        }
+        .balance-item .gets {
+            color: #1c7a4b; background: #e2f5e9; padding: 4px 16px; border-radius: 40px; font-weight: 600;
+        }
+        .balance-item .settled {
+            color: #6d8b9c; background: #edf3f8; padding: 4px 16px; border-radius: 40px; font-weight: 500;
+        }
+
+        /* sheets section */
+        .sheets-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            background: #ffffffd0;
+            backdrop-filter: blur(4px);
+            border-radius: 80px;
+            padding: 12px 20px;
+            margin-top: 28px;
+            border: 1px solid #ffffff;
+            box-shadow: 0 4px 12px -4px rgba(0,0,0,0.08);
+        }
+        .sheets-bar label {
+            font-weight: 500;
+            color: #305d7a;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sheets-bar input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 18px;
+            border-radius: 60px;
+            border: 1px solid #cddde9;
+            background: #ffffff;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .sheets-bar input:focus {
+            border-color: #5d9bc7;
+            box-shadow: 0 0 0 3px #d0e5f5;
+        }
+        .status-msg {
+            font-size: 0.85rem;
+            color: #3b6b8b;
+            background: #e3f0fa;
+            padding: 6px 16px;
+            border-radius: 40px;
+            display: inline-block;
+        }
+        .footnote {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #7b95a8;
+            margin-top: 24px;
+        }
+
+        /* misc */
+        .empty-message {
+            color: #8b9eac;
+            font-style: italic;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 0.92rem;
+        }
+        .scroll-thin::-webkit-scrollbar { width: 6px; }
+        .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: #b9cfdf; border-radius: 20px; }
+        .total-spent {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f4f6b;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed #b9d2e6;
+            padding-bottom: 10px;
+        }
+        .flex-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    </style>
+</head>
+<body>
+<div class="app-card">
+    <h1>
+        ✈️🍕 Trip & Food Splitter
+        <span style="font-size: 0.85rem; background: #d9e7f2; padding: 6px 18px; border-radius: 60px; font-weight: 500; color: #20587a; margin-left: auto;">dashboard + sheets</span>
+    </h1>
+    <div class="subhead">
+        <span>Split trip costs & meals — with live dashboard and Google Sheets export.</span>
+        <div class="flex-row">
+            <button id="resetAllBtn" class="btn-outline">⟲ Reset all</button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD CARDS -->
+    <div class="dashboard-grid" id="dashboardGrid">
+        <div class="stat-card">
+            <div class="label">👥 Friends</div>
+            <div class="value" id="dashFriendCount">0</div>
+            <div class="sub">in the group</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">🧾 Expenses</div>
+            <div class="value" id="dashExpenseCount">0</div>
+            <div class="sub">total entries</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">💰 Total spent</div>
+            <div class="value" id="dashTotalSpent">$0</div>
+            <div class="sub">all expenses</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">⚖️ Fair share</div>
+            <div class="value" id="dashFairShare">$0</div>
+            <div class="sub">per person (equal)</div>
+        </div>
+    </div>
+
+    <div class="grid-2col">
+        <!-- LEFT PANEL: FRIENDS -->
+        <div class="panel">
+            <h2>👥 Friends <span class="badge" id="friendCountBadge">0</span></h2>
+            <div id="friendList" class="friend-list scroll-thin"></div>
+            <div class="add-friend-row">
+                <input type="text" id="newFriendName" placeholder="e.g. Alex" maxlength="30">
+                <button id="addFriendBtn" class="btn-primary" style="padding: 12px 22px;">➕ Add</button>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: EXPENSES -->
+        <div class="panel">
+            <h2>🧾 Expenses <span class="badge" id="expenseCountBadge">0</span></h2>
+            <div class="expense-form">
+                <div class="form-row">
+                    <label for="expenseDesc">What</label>
+                    <input type="text" id="expenseDesc" placeholder="Dinner, taxi, Airbnb..." maxlength="40">
+                </div>
+                <div class="form-row">
+                    <label for="expenseAmount">Amount</label>
+                    <input type="number" id="expenseAmount" placeholder="0.00" min="0.01" step="0.01">
+                </div>
+                <div class="form-row">
+                    <label for="expensePaidBy">Paid by</label>
+                    <select id="expensePaidBy"></select>
+                </div>
+                <button class="btn-primary" id="addExpenseBtn">➕ Add expense</button>
+            </div>
+            <div id="expenseList" class="expense-list scroll-thin"></div>
+        </div>
+    </div>
+
+    <!-- RESULTS / BALANCES -->
+    <div class="results-area">
+        <h2>💰 Who owes / gets what</h2>
+        <div id="totalSpentDisplay" class="total-spent">
+            <span>Total spent</span>
+            <span id="totalSpentAmount">$0.00</span>
+        </div>
+        <div id="balanceList" class="balance-list"></div>
+    </div>
+
+    <!-- GOOGLE SHEETS INTEGRATION -->
+    <div class="sheets-bar">
+        <label>📎 Google Sheets URL</label>
+        <input type="text" id="sheetsUrlInput" placeholder="Paste your Google Sheets web app URL or export link..." />
+        <button id="pushToSheetsBtn" class="btn-primary" style="padding: 12px 24px;">⬆️ Export to Sheets</button>
+        <span id="sheetsStatus" class="status-msg">Ready</span>
+    </div>
+    <div class="footnote">
+        <strong>Google Sheets:</strong> provide a web app URL that accepts a POST with JSON (e.g., Google Apps Script). Data is sent as <code>{ friends, expenses, total, fairShare, balances }</code>.
+    </div>
+</div>
+
 <script>
-let API=localStorage.getItem('tripsplit_api')||'',db={trips:[],people:[],expenses:[]},current=null;
-const $=id=>document.getElementById(id);
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function money(n,c='₹'){return c+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
-async function call(action,data={}){let r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...data})});let x=await r.json();if(!x.ok)throw Error(x.error);return x}
-async function connect(){API=$('api').value.trim();if(!API)return alert('Paste API URL');localStorage.setItem('tripsplit_api',API);try{await sync();$('setup').classList.add('hidden');$('main').classList.remove('hidden');home()}catch(e){alert('Connection failed: '+e.message)}}
-async function sync(){let x=await call('bootstrap');db.trips=x.trips.map(t=>({id:String(t.tripId),name:t.name,date:t.date,currency:t.currency}));db.people=x.people.map(p=>({id:String(p.personId),tripId:String(p.tripId),name:p.name}));db.expenses=x.expenses.map(e=>({id:String(e.expenseId),tripId:String(e.tripId),desc:e.description,amount:+e.amount,paidBy:String(e.paidBy),category:e.category,date:e.date,shares:JSON.parse(e.sharesJson||'{}')}))}
-async function save(){await call('save',{data:{
-trips:db.trips,
-people:db.people,
-expenses:db.expenses.map(e=>({...e,tripId:e.tripId}))
-}});localStorage.setItem('tripsplit_cache',JSON.stringify(db))}
-function home(){current=null;$('main').innerHTML=`<div class="card row"><div><h2>My Trips</h2><span class="muted">Cloud synced</span></div><button onclick="newTrip()">＋ New Trip</button></div>`+(db.trips.length?db.trips.map(t=>`<div class="card row" onclick="openTrip('${t.id}')"><div><b>${esc(t.name)}</b><div class="muted">${t.peopleCount||db.people.filter(p=>p.tripId===t.id).length} people</div></div><b>${money(total(t),t.currency)}</b></div>`).join(''):'<div class="card empty">No trips yet.</div>')}
-function newTrip(){let n=prompt('Trip name');if(!n)return;let names=prompt('People, comma separated');if(!names)return;let t={id:crypto.randomUUID(),name:n,date:new Date().toISOString().slice(0,10),currency:'₹'};db.trips.unshift(t);names.split(',').map(x=>x.trim()).filter(Boolean).forEach(name=>db.people.push({id:crypto.randomUUID(),tripId:t.id,name}));save().then(()=>openTrip(t.id))}
-function openTrip(id){current=id;let t=db.trips.find(x=>x.id===id);let people=db.people.filter(p=>p.tripId===id);let ex=db.expenses.filter(e=>e.tripId===id);$('main').innerHTML=`<div class="row"><button class="secondary" onclick="home()">← Trips</button><button onclick="addExpense()">＋ Expense</button></div><div class="card"><h1>${esc(t.name)}</h1><div class="grid"><div><b>${money(total(t),t.currency)}</b><div class="muted">Total expense</div></div><div><b>${ex.length}</b><div class="muted">Expenses</div></div></div></div><div class="card"><h2>People</h2>${balances(t).map(x=>`<div class="person row"><span>${esc(x.name)}</span><b class="${x.balance>=0?'good':'bad'}">${x.balance>=0?'+':''}${money(x.balance,t.currency)}</b></div>`).join('')}</div><div class="card"><h2>Expenses</h2>${ex.length?ex.slice().reverse().map(e=>`<div class="expense row"><span><b>${esc(e.desc)}</b><br><small>${esc(people.find(p=>p.id===e.paidBy)?.name||'')}</small></span><span>${money(e.amount,t.currency)} <button class="secondary" onclick="delExpense('${e.id}')">×</button></span></div>`).join(''):'<div class="empty">No expenses</div>'}</div><div class="card"><h2>Settlement</h2>${settlements(t).map(x=>`<div class="person row"><span>${esc(x.from)} → ${esc(x.to)}</span><b>${money(x.amount,t.currency)}</b></div>`).join('')||'<div class="empty">Everyone is settled 🎉</div>'}</div>`}
-function total(t){return db.expenses.filter(e=>e.tripId===t.id).reduce((s,e)=>s+e.amount,0)}
-function balances(t){let m=Object.fromEntries(db.people.filter(p=>p.tripId===t.id).map(p=>[p.id,{name:p.name,paid:0,share:0}]));db.expenses.filter(e=>e.tripId===t.id).forEach(e=>{if(m[e.paidBy])m[e.paidBy].paid+=e.amount;Object.entries(e.shares||{}).forEach(([id,v])=>{if(m[id])m[id].share+=+v})});return Object.values(m).map(x=>({...x,balance:x.paid-x.share}))}
-function settlements(t){let b=balances(t),d=b.filter(x=>x.balance<-.005).map(x=>({name:x.name,bal:-x.balance})),c=b.filter(x=>x.balance>.005).map(x=>({name:x.name,bal:x.balance})),o=[];let i=0,j=0;while(i<d.length&&j<c.length){let a=Math.min(d[i].bal,c[j].bal);o.push({from:d[i].name,to:c[j].name,amount:a});d[i].bal-=a;c[j].bal-=a;if(d[i].bal<.005)i++;if(c[j].bal<.005)j++}return o}
-function addExpense(){let t=db.trips.find(x=>x.id===current),p=db.people.filter(x=>x.tripId===current),d=prompt('Expense description');if(!d)return;let a=+prompt('Amount');if(!(a>0))return;let paid=p[0];let pn=prompt('Who paid?\\n'+p.map((x,i)=>(i+1)+'. '+x.name).join('\\n'),'1');paid=p[Math.max(0,(+pn||1)-1)];let sn=prompt('Split among numbers (e.g. 1,2,3)',p.map((_,i)=>i+1).join(','));let ids=(sn||'').split(',').map(x=>p[(+x.trim()||1)-1]?.id).filter(Boolean);ids=[...new Set(ids)];if(!ids.length)return;let each=a/ids.length;db.expenses.push({id:crypto.randomUUID(),tripId:current,desc:d,amount:a,paidBy:paid.id,category:'Other',date:new Date().toISOString().slice(0,10),shares:Object.fromEntries(ids.map(id=>[id,each]))});save().then(()=>openTrip(current))}
-function delExpense(id){if(!confirm('Delete expense?'))return;db.expenses=db.expenses.filter(e=>e.id!==id);save().then(()=>openTrip(current))}
-if(API){$('api').value=API;connect()}else{let c=localStorage.getItem('tripsplit_cache');if(c){db=JSON.parse(c)}}
-</script></body></html>
+    (function() {
+        // ---------- STATE ----------
+        let friends = [];
+        let expenses = [];          // { id, description, amount, paidBy }
+        let nextExpenseId = 1;
+
+        // DOM refs
+        const friendListEl = document.getElementById('friendList');
+        const friendCountBadge = document.getElementById('friendCountBadge');
+        const newFriendNameInput = document.getElementById('newFriendName');
+        const addFriendBtn = document.getElementById('addFriendBtn');
+        const expenseDescInput = document.getElementById('expenseDesc');
+        const expenseAmountInput = document.getElementById('expenseAmount');
+        const expensePaidBySelect = document.getElementById('expensePaidBy');
+        const addExpenseBtn = document.getElementById('addExpenseBtn');
+        const expenseListEl = document.getElementById('expenseList');
+        const expenseCountBadge = document.getElementById('expenseCountBadge');
+        const totalSpentAmountEl = document.getElementById('totalSpentAmount');
+        const balanceListEl = document.getElementById('balanceList');
+        const resetAllBtn = document.getElementById('resetAllBtn');
+
+        // Dashboard elements
+        const dashFriendCount = document.getElementById('dashFriendCount');
+        const dashExpenseCount = document.getElementById('dashExpenseCount');
+        const dashTotalSpent = document.getElementById('dashTotalSpent');
+        const dashFairShare = document.getElementById('dashFairShare');
+
+        // Sheets elements
+        const sheetsUrlInput = document.getElementById('sheetsUrlInput');
+        const pushToSheetsBtn = document.getElementById('pushToSheetsBtn');
+        const sheetsStatus = document.getElementById('sheetsStatus');
+
+        // ---------- HELPERS ----------
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text).replace(/[&<>"']/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                if (m === '"') return '&quot;';
+                if (m === "'") return '&#39;';
+                return m;
+            });
+        }
+
+        // ---------- RENDER FUNCTIONS ----------
+
+        function renderFriends() {
+            if (friends.length === 0) {
+                friendListEl.innerHTML = `<div class="empty-message">No friends yet. Add someone!</div>`;
+            } else {
+                friendListEl.innerHTML = friends.map((name, index) => `
+                    <div class="friend-item">
+                        <input type="text" value="${escapeHtml(name)}" class="friend-name-input" data-index="${index}" maxlength="30">
+                        <button class="remove-friend" data-index="${index}" title="Remove friend">✕</button>
+                    </div>
+                `).join('');
+            }
+            friendCountBadge.textContent = friends.length;
+            dashFriendCount.textContent = friends.length;
+
+            // Attach listeners
+            document.querySelectorAll('.friend-name-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    const newName = e.target.value.trim();
+                    if (newName === '') {
+                        e.target.value = friends[idx];
+                        return;
+                    }
+                    friends[idx] = newName;
+                    updatePaidBySelect();
+                    renderExpenses();
+                    renderDashboardAndBalances();
+                });
+            });
+
+            document.querySelectorAll('.remove-friend').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    if (!isNaN(idx)) removeFriend(idx);
+                });
+            });
+
+            updatePaidBySelect();
+        }
+
+        function updatePaidBySelect() {
+            const current = expensePaidBySelect.value;
+            if (friends.length === 0) {
+                expensePaidBySelect.innerHTML = `<option value="">— add friends first —</option>`;
+                expensePaidBySelect.disabled = true;
+                return;
+            }
+            expensePaidBySelect.disabled = false;
+            expensePaidBySelect.innerHTML = friends.map(name =>
+                `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+            ).join('');
+            if (friends.includes(current)) expensePaidBySelect.value = current;
+            else if (friends.length) expensePaidBySelect.value = friends[0];
+        }
+
+        function renderExpenses() {
+            if (expenses.length === 0) {
+                expenseListEl.innerHTML = `<div class="empty-message">No expenses yet. Add one above.</div>`;
+            } else {
+                expenseListEl.innerHTML = expenses.map(exp => `
+                    <div class="expense-item">
+                        <span class="desc">${escapeHtml(exp.description)}</span>
+                        <span class="amount">$${exp.amount.toFixed(2)}</span>
+                        <span class="paidby">${escapeHtml(exp.paidBy)}</span>
+                        <button class="delete-expense" data-id="${exp.id}" title="Delete expense">✕</button>
+                    </div>
+                `).join('');
+            }
+            expenseCountBadge.textContent = expenses.length;
+            dashExpenseCount.textContent = expenses.length;
+
+            document.querySelectorAll('.delete-expense').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.target.dataset.id);
+                    if (!isNaN(id)) deleteExpense(id);
+                });
+            });
+        }
+
+        function renderDashboardAndBalances() {
+            // --- dashboard ---
+            const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+            const fairShare = friends.length ? total / friends.length : 0;
+
+            dashTotalSpent.textContent = `$${total.toFixed(2)}`;
+            dashFairShare.textContent = friends.length ? `$${fairShare.toFixed(2)}` : '$0.00';
+            totalSpentAmountEl.textContent = `$${total.toFixed(2)}`;
+
+            // --- balances ---
+            if (friends.length === 0) {
+                balanceListEl.innerHTML = `<div class="empty-message">Add friends and expenses to see balances.</div>`;
+                return;
+            }
+
+            if (expenses.length === 0) {
+                balanceListEl.innerHTML = `<div class="empty-message">No expenses to split yet.</div>`;
+                return;
+            }
+
+            const paidMap = new Map();
+            friends.forEach(f => paidMap.set(f, 0));
+            expenses.forEach(exp => {
+                if (paidMap.has(exp.paidBy)) {
+                    paidMap.set(exp.paidBy, paidMap.get(exp.paidBy) + exp.amount);
+                } else {
+                    paidMap.set(exp.paidBy, exp.amount);
+                }
+            });
+
+            const share = total / friends.length;
+            const balances = friends.map(friend => ({
+                name: friend,
+                balance: (paidMap.get(friend) || 0) - share
+            }));
+            balances.sort((a, b) => a.balance - b.balance);
+
+            balanceListEl.innerHTML = balances.map(item => {
+                const bal = item.balance;
+                let cls = 'settled', text = 'settled';
+                if (bal > 0.005) { cls = 'gets'; text = `gets $${bal.toFixed(2)}`; }
+                else if (bal < -0.005) { cls = 'owes'; text = `owes $${Math.abs(bal).toFixed(2)}`; }
+                return `<div class="balance-item">
+                            <span class="name">${escapeHtml(item.name)}</span>
+                            <span class="${cls}">${text}</span>
+                        </div>`;
+            }).join('');
+        }
+
+        function renderAll() {
+            renderFriends();
+            renderExpenses();
+            renderDashboardAndBalances();
+        }
+
+        // ---------- ACTIONS ----------
+
+        function addFriend(name) {
+            const trimmed = name.trim();
+            if (trimmed === '') return false;
+            if (friends.includes(trimmed)) {
+                alert(`Friend "${trimmed}" already exists.`);
+                return false;
+            }
+            friends.push(trimmed);
+            renderAll();
+            return true;
+        }
+
+        function removeFriend(index) {
+            if (index < 0 || index >= friends.length) return;
+            const removed = friends[index];
+            if (expenses.some(e => e.paidBy === removed)) {
+                if (!confirm(`"${removed}" has paid for expenses. Remove anyway? Their payments will not be credited.`)) return;
+            }
+            friends.splice(index, 1);
+            renderAll();
+        }
+
+        function addExpense(desc, amount, paidBy) {
+            if (!desc.trim()) { alert('Please enter a description.'); return false; }
+            const amt = parseFloat(amount);
+            if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return false; }
+            if (!paidBy || !friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
+
+            expenses.push({
+                id: nextExpenseId++,
+                description: desc.trim(),
+                amount: amt,
+                paidBy
+            });
+            renderAll();
+            return true;
+        }
+
+        function deleteExpense(id) {
+            expenses = expenses.filter(e => e.id !== id);
+            renderAll();
+        }
+
+        function resetAll() {
+            if (friends.length === 0 && expenses.length === 0) return;
+            if (confirm('Delete all friends and expenses? This cannot be undone.')) {
+                friends = [];
+                expenses = [];
+                nextExpenseId = 1;
+                newFriendNameInput.value = '';
+                expenseDescInput.value = '';
+                expenseAmountInput.value = '';
+                renderAll();
+            }
+        }
+
+        // ---------- GOOGLE SHEETS EXPORT ----------
+        async function pushToGoogleSheets() {
+            const url = sheetsUrlInput.value.trim();
+            if (!url) {
+                sheetsStatus.textContent = '⚠️ Please enter a Google Sheets URL.';
+                sheetsStatus.style.background = '#ffe6e6';
+                return;
+            }
+            if (friends.length === 0 && expenses.length === 0) {
+                sheetsStatus.textContent = '⚠️ No data to export.';
+                sheetsStatus.style.background = '#ffe6e6';
+                return;
+            }
+
+            // Build payload
+            const total = expenses.reduce((s, e) => s + e.amount, 0);
+            const share = friends.length ? total / friends.length : 0;
+            const paidMap = new Map();
+            friends.forEach(f => paidMap.set(f, 0));
+            expenses.forEach(e => {
+                if (paidMap.has(e.paidBy)) paidMap.set(e.paidBy, paidMap.get(e.paidBy) + e.amount);
+                else paidMap.set(e.paidBy, e.amount);
+            });
+            const balances = friends.map(f => ({
+                name: f,
+                paid: paidMap.get(f) || 0,
+                balance: (paidMap.get(f) || 0) - share
+            }));
+
+            const payload = {
+                friends,
+                expenses: expenses.map(e => ({ description: e.description, amount: e.amount, paidBy: e.paidBy })),
+                total: Number(total.toFixed(2)),
+                fairShare: Number(share.toFixed(2)),
+                balances: balances.map(b => ({ name: b.name, paid: Number(b.paid.toFixed(2)), balance: Number(b.balance.toFixed(2)) })),
+                exportedAt: new Date().toISOString()
+            };
+
+            sheetsStatus.textContent = '⏳ Sending...';
+            sheetsStatus.style.background = '#e3f0fa';
+
+            try {
+                // Try fetch with CORS (Google Apps Script often needs 'no-cors' or proper CORS)
+                // We'll attempt a normal POST with JSON; for Apps Script you typically need to handle CORS.
+                // If it fails, we fallback to a simple copy approach.
+                const response = await fetch(url, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    sheetsStatus.textContent = '✅ Exported successfully!';
+                    sheetsStatus.style.background = '#e2f5e9';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (err) {
+                console.warn('CORS/fetch error:', err);
+                // Fallback: copy JSON to clipboard for manual paste
+                try {
+                    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+                    sheetsStatus.textContent = '📋 Copied JSON to clipboard (CORS blocked). Paste into your sheet.';
+                    sheetsStatus.style.background = '#fff3d6';
+                } catch (clipErr) {
+                    sheetsStatus.textContent = '❌ Export failed. Use browser console to copy data.';
+                    sheetsStatus.style.background = '#ffe6e6';
+                    console.log('Payload:', payload);
+                }
+            }
+        }
+
+        // ---------- EVENT LISTENERS ----------
+
+        addFriendBtn.addEventListener('click', () => {
+            if (addFriend(newFriendNameInput.value)) {
+                newFriendNameInput.value = '';
+                newFriendNameInput.focus();
+            }
+        });
+        newFriendNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addFriendBtn.click(); }
+        });
+
+        addExpenseBtn.addEventListener('click', () => {
+            if (addExpense(expenseDescInput.value, expenseAmountInput.value, expensePaidBySelect.value)) {
+                expenseDescInput.value = '';
+                expenseAmountInput.value = '';
+                expenseDescInput.focus();
+            }
+        });
+        expenseDescInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+        });
+        expenseAmountInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+        });
+
+        resetAllBtn.addEventListener('click', resetAll);
+
+        pushToSheetsBtn.addEventListener('click', pushToGoogleSheets);
+
+        // ---------- INITIAL DEMO DATA ----------
+        function initDemo() {
+            friends = ['Alex', 'Sam', 'Jordan'];
+            expenses = [
+                { id: nextExpenseId++, description: 'Pizza night', amount: 45.50, paidBy: 'Alex' },
+                { id: nextExpenseId++, description: 'Taxi to airport', amount: 30.00, paidBy: 'Sam' },
+                { id: nextExpenseId++, description: 'Airbnb (2 nights)', amount: 200.00, paidBy: 'Jordan' },
+            ];
+            renderAll();
+        }
+
+        initDemo();
+    })();
+</script>
+</body>
+</html>
