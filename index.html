@@ -400,9 +400,10 @@
             margin-top: 10px;
         }
         .action-buttons .btn-primary {
-            flex: 1;
+            flex: 2;
         }
         .btn-sync {
+            flex: 1;
             background: #1c7a4b;
             color: white;
             border: none;
@@ -680,8 +681,8 @@
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn-primary" id="addExpenseBtn">➕ Add expense</button>
-                    <button class="btn-sync" id="manualSyncBtn" title="Force sync to Google Sheets">💾 Save</button>
+                    <button class="btn-primary" id="addExpenseBtn">➕ Add & Save</button>
+                    <button class="btn-sync" id="manualSyncBtn" title="Sync to Google Sheets">💾 Sync</button>
                 </div>
             </div>
         </div>
@@ -816,7 +817,6 @@
             localStorage.setItem('splitter_groups', JSON.stringify({ groups, activeGroupId }));
             
             if (triggerSync) {
-                // Debounce the sync so it doesn't fire 10 times per second
                 if (syncTimeout) clearTimeout(syncTimeout);
                 sheetsStatus.textContent = '⏳ Waiting to sync...';
                 sheetsStatus.style.background = 'var(--paidby-bg)';
@@ -824,7 +824,7 @@
                 
                 syncTimeout = setTimeout(() => {
                     autoSyncToSheets();
-                }, 1500); // Wait 1.5 seconds after the last action before syncing
+                }, 1500);
             }
         }
 
@@ -1110,14 +1110,20 @@
             saveData();
         }
 
-        function addExpense(desc, amount, paidBy, splitType) {
+        // THIS FUNCTION NOW HANDLES ADDING AND SAVING
+        function addExpenseAndSync() {
             const group = getActiveGroup();
-            if (!group) return false;
+            if (!group) return;
 
-            if (!desc.trim()) { alert('Please enter a description.'); return false; }
+            const desc = expenseDescInput.value;
+            const amount = expenseAmountInput.value;
+            const paidBy = expensePaidBySelect.value;
+            const splitType = splitTypeSelect.value;
+
+            if (!desc.trim()) { alert('Please enter a description.'); return; }
             const amt = parseFloat(amount);
-            if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return false; }
-            if (!paidBy || !group.friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return false; }
+            if (isNaN(amt) || amt <= 0) { alert('Please enter a valid amount > 0.'); return; }
+            if (!paidBy || !group.friends.includes(paidBy)) { alert('Select who paid (add friends first).'); return; }
 
             let splitWith = [];
             if (splitType === 'group') {
@@ -1127,10 +1133,11 @@
                 splitWith = Array.from(checkboxes).map(cb => cb.value);
                 if (splitWith.length === 0) {
                     alert('Please select at least one person to split with.');
-                    return false;
+                    return;
                 }
             }
 
+            // 1. Add to local state
             group.expenses.push({
                 id: group.nextExpenseId++,
                 description: desc.trim(),
@@ -1138,9 +1145,17 @@
                 paidBy,
                 splitWith
             });
+
+            // 2. Clear inputs
+            expenseDescInput.value = '';
+            expenseAmountInput.value = '';
+            expenseDescInput.focus();
+            splitTypeSelect.value = 'group';
+            customSplitArea.style.display = 'none';
+
+            // 3. Render & Save (triggers auto-sync in background)
             renderAll();
-            saveData(); // This now triggers the auto-sync
-            return true;
+            saveData(); 
         }
 
         function deleteExpense(id) {
@@ -1148,7 +1163,7 @@
             if (!group) return;
             group.expenses = group.expenses.filter(e => e.id !== id);
             renderAll();
-            saveData(); // This now triggers the auto-sync
+            saveData(); 
         }
 
         function resetGroup() {
@@ -1186,7 +1201,7 @@
             
             renderGroupSelect();
             renderAll();
-            saveData();
+            saveData(false);
         }
 
         function deleteGroup() {
@@ -1202,7 +1217,7 @@
                 currentFilter = 'all';
                 renderGroupSelect();
                 renderAll();
-                saveData();
+                saveData(false);
             }
         }
 
@@ -1247,7 +1262,7 @@
                     splitWith: e.splitWith 
                 })),
                 total: Number(total.toFixed(2)),
-                balances: group.friends.map(f => ({ name: f, balance: Number(balances[f].toFixed(2)) })),
+                balances: group.friends.map(f => ({ name: f, balance: Number(balances[f].toFixed(2)), totalPaid: Number(balances[f] > 0 ? balances[f] : 0).toFixed(2) })),
                 exportedAt: new Date().toISOString()
             };
 
@@ -1265,7 +1280,6 @@
                     sheetsStatus.style.background = 'var(--gets-bg)';
                     sheetsStatus.style.color = 'var(--gets-text)';
                     
-                    // Reset status back to normal after 4 seconds
                     setTimeout(() => {
                         if (sheetsStatus.textContent === '✅ Auto-synced successfully!') {
                             sheetsStatus.textContent = '🔄 Auto-sync active';
@@ -1291,7 +1305,7 @@
             splitTypeSelect.value = 'group';
             customSplitArea.style.display = 'none';
             renderAll();
-            saveData(false); // Don't sync just because you switched tabs
+            saveData(false); 
         });
 
         filterPersonSelect.addEventListener('change', (e) => {
@@ -1319,20 +1333,14 @@
             if (e.key === 'Enter') { e.preventDefault(); addFriendBtn.click(); }
         });
 
-        addExpenseBtn.addEventListener('click', () => {
-            if (addExpense(expenseDescInput.value, expenseAmountInput.value, expensePaidBySelect.value, splitTypeSelect.value)) {
-                expenseDescInput.value = '';
-                expenseAmountInput.value = '';
-                expenseDescInput.focus();
-                splitTypeSelect.value = 'group';
-                customSplitArea.style.display = 'none';
-            }
-        });
+        // THIS BUTTON NOW DOES BOTH ADD AND SAVE
+        addExpenseBtn.addEventListener('click', addExpenseAndSync);
+        
         expenseDescInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseAndSync(); }
         });
         expenseAmountInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addExpenseBtn.click(); }
+            if (e.key === 'Enter') { e.preventDefault(); addExpenseAndSync(); }
         });
 
         splitTypeSelect.addEventListener('change', () => {
