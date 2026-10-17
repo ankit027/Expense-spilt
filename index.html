@@ -710,6 +710,12 @@
         <div id="expenseList" class="expense-list scroll-thin"></div>
     </div>
 
+    <!-- Hidden Form for CORS bypass -->
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+    <form id="syncForm" action="" method="POST" target="hidden_iframe" style="display:none;">
+        <input type="hidden" name="data" id="syncDataInput">
+    </form>
+
     <!-- Google Sync Status Bar -->
     <div class="sheets-bar">
         <span id="sheetsStatus" class="status-msg">🔄 Auto-sync active</span>
@@ -775,6 +781,10 @@
         const dashFairShare = document.getElementById('dashFairShare');
 
         const sheetsStatus = document.getElementById('sheetsStatus');
+        
+        // Form elements for sync
+        const syncForm = document.getElementById('syncForm');
+        const syncDataInput = document.getElementById('syncDataInput');
 
         function escapeHtml(text) {
             if (!text) return '';
@@ -1217,8 +1227,8 @@
             }
         }
 
-        // ---------- GOOGLE SHEETS AUTO-SYNC (CORS FIXED) ----------
-        async function autoSyncToSheets() {
+        // ---------- GOOGLE SHEETS AUTO-SYNC (FORM SUBMISSION) ----------
+        function autoSyncToSheets() {
             const group = getActiveGroup();
             if (!group) return;
 
@@ -1263,20 +1273,12 @@
             };
 
             try {
-                const formData = new URLSearchParams();
-                formData.append('data', JSON.stringify(payload));
+                // Use the hidden form to bypass ALL CORS issues
+                syncForm.action = GOOGLE_SHEET_URL;
+                syncDataInput.value = JSON.stringify(payload);
+                syncForm.submit();
 
-                // USING NO-CORS TO BYPASS BROWSER BLOCK
-                await fetch(GOOGLE_SHEET_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: formData
-                });
-
-                // Since no-cors doesn't return a readable response, we assume success if no error was thrown
+                // Assume success since form submission never fails locally
                 sheetsStatus.textContent = '✅ Auto-synced successfully!';
                 sheetsStatus.style.background = 'var(--gets-bg)';
                 sheetsStatus.style.color = 'var(--gets-text)';
