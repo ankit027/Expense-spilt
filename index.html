@@ -65,7 +65,7 @@ details summary{list-style:revert}
 <main id="app"></main>
 <script>
 var API='https://script.google.com/macros/s/AKfycbzGJsIx5xxJcIyQwGBbrBXfrRDQPJr4L0Jq0TKpSDMCYLQbbFNAV6IJK1tkn2Rica8HHg/exec';
-var S=[],view='dashboard',gid=null,me=null,myName='',tok=null,ready=false,errMsg='';
+var hasEmail=true,S=[],view='dashboard',gid=null,me=null,myName='',tok=null,ready=false,errMsg='';
 function $(q){return document.querySelector(q)}
 function esc(t){return String(t).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function inr(n){return '₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2})}
@@ -77,7 +77,7 @@ function isAdm(g){return role(g)==='admin'}
 function api(action,data){return fetch(API,{method:'POST',body:JSON.stringify(Object.assign({token:tok,action:action},data||{}))}).then(function(r){return r.json()}).then(function(r){if(r.error){var e=new Error(r.error);throw e}return r})}
 function fail(e){var m=e&&e.message||'Something went wrong';if(m==='auth'){signOut('Your session expired. Sign in again.');return}
   if(m==='conflict'){alert('Someone else changed this group at the same time. The latest version is loaded, please try again.');refresh();return}alert(m)}
-function refresh(){return api('list').then(function(r){S=r.groups;ready=true;errMsg='';var ae=document.activeElement;if(ae&&/INPUT|SELECT/.test(ae.tagName)&&ae.value&&$('#app').contains(ae))return;render()}).catch(function(e){if(e.message==='auth')fail(e);else{errMsg='Could not reach the server. Check the web app link in this file.';render()}})}
+function refresh(){return api('list').then(function(r){S=r.groups;hasEmail=r.hasEmail!==false;ready=true;errMsg='';var ae=document.activeElement;if(ae&&/INPUT|SELECT/.test(ae.tagName)&&ae.value&&$('#app').contains(ae))return;render()}).catch(function(e){if(e.message==='auth')fail(e);else{errMsg='Could not reach the server. Check the web app link in this file.';render()}})}
 function mutate(id,fn){var g=JSON.parse(JSON.stringify(G(id)));fn(g);return api('save',{group:g}).then(refresh).catch(fail)}
 function balances(g){var b={};g.members.forEach(function(m){b[m]=0});
   g.tx.forEach(function(t){if(t.type==='settle'){b[t.by]+=t.amt;b[t.to]-=t.amt}else{b[t.by]+=t.amt;var s=t.amt/t.split.length;t.split.forEach(function(m){b[m]-=s})}});return b}
@@ -124,7 +124,7 @@ function dashboard(){
     g.tx.forEach(function(t){all.push({g:g,t:t});if(t.type!=='settle')payers[t.by]=(payers[t.by]||0)+t.amt})});
   all.sort(function(a,b){return b.t.date-a.t.date});
   var max=Math.max.apply(null,S.map(spent).concat([1])),top=Object.keys(payers).sort(function(a,b){return payers[b]-payers[a]}).slice(0,5);
-  var h='<div class="sp"><span class="lbl">Signed in as '+esc(myName)+'. Showing only groups you created or were given access to.</span><button class="btn ghost sm" onclick="exportAll()">Export all as CSV</button></div>'
+  var h=(hasEmail?'':emailCard())+'<div class="sp"><span class="lbl">Signed in as '+esc(myName)+'. Showing only groups you created or were given access to.</span><button class="btn ghost sm" onclick="exportAll()">Export all as CSV</button></div>'
    +'<div class="grid"><div class="card"><div class="lbl">Total spent</div><div class="big">'+inr(tot)+'</div></div><div class="card"><div class="lbl">Still to settle</div><div class="big neg">'+inr(owed)+'</div></div><div class="card"><div class="lbl">Groups</div><div class="big">'+S.length+'</div></div><div class="card"><div class="lbl">Transactions</div><div class="big">'+n+'</div></div></div><div style="height:14px"></div>';
   if(!S.length)return h+'<div class="card empty">No groups yet. Create one, or ask a group admin to add you.<br><br><button class="btn" onclick="go(\'groups\')">Create a group</button></div>';
   h+='<div class="card"><h3>Who pays whom (all groups)</h3>'+mine(S)+modeBar()+summary(S,null)+'</div>';
@@ -170,11 +170,20 @@ function grant(){var e=$('#ue').value.trim().toLowerCase(),n=$('#un').value.trim
   mutate(gid,function(g){g.access[e]=r;g.link=g.link||{};g.link[e]=n;if(g.members.indexOf(n)<0)g.members.push(n)})}
 function setRole(id,r){mutate(gid,function(g){g.access[id]=r})}
 function rmAccess(id){if(confirm('Remove this person from the group?'))mutate(gid,function(g){delete g.access[id]})}
-function showLogin(){$('#app').innerHTML='<div class="card" style="max-width:380px;margin:24px auto"><h3>Sign in</h3>'+(errMsg?'<div class="neg" style="margin-bottom:10px">'+esc(errMsg)+'</div>':'')+'<input id="lu" placeholder="Username" autocomplete="username" style="margin-bottom:10px"><input id="lp" type="password" placeholder="Password" autocomplete="current-password" style="margin-bottom:10px"><input id="ln" placeholder="Your name (only for a new account)" style="margin-bottom:12px"><div class="row"><button class="btn" onclick="auth(\'login\')">Sign in</button><button class="btn ghost" onclick="auth(\'register\')">Create account</button></div></div>'}
+function showLogin(){$('#app').innerHTML='<div class="card" style="max-width:380px;margin:24px auto"><h3>Sign in</h3>'+(errMsg?'<div class="neg" style="margin-bottom:10px">'+esc(errMsg)+'</div>':'')+'<input id="lu" placeholder="Username" autocomplete="username" style="margin-bottom:10px"><input id="lp" type="password" placeholder="Password" autocomplete="current-password" style="margin-bottom:10px"><input id="ln" placeholder="Your name (only for a new account)" style="margin-bottom:10px"><input id="le" type="email" placeholder="Email for password reset (new account)" style="margin-bottom:12px"><div class="row"><button class="btn" onclick="auth(\'login\')">Sign in</button><button class="btn ghost" onclick="auth(\'register\')">Create account</button></div><div style="margin-top:12px"><button class="x" style="font-size:14px;text-decoration:underline" onclick="showForgot()">Forgot password?</button></div></div>'}
 function auth(kind){var u=$('#lu').value.trim().toLowerCase(),p=$('#lp').value;
   if(!/^[a-z0-9_]{3,20}$/.test(u)){errMsg='Username must be 3-20 letters, numbers or underscores.';showLogin();return}
   if(p.length<6){errMsg='Password must be at least 6 characters.';showLogin();return}
-  errMsg='';fetch(API,{method:'POST',body:JSON.stringify({action:kind,user:u,password:p,name:$('#ln').value.trim()})}).then(function(r){return r.json()}).then(function(r){if(r.error){errMsg=r.error;showLogin();return}start(r.token,r.user,r.name)}).catch(function(){errMsg='Could not reach the server. Check the web app link in this file.';showLogin()})}
+  errMsg='';fetch(API,{method:'POST',body:JSON.stringify({action:kind,user:u,password:p,name:$('#ln').value.trim(),email:$('#le').value.trim()})}).then(function(r){return r.json()}).then(function(r){if(r.error){errMsg=r.error;showLogin();return}start(r.token,r.user,r.name)}).catch(function(){errMsg='Could not reach the server. Check the web app link in this file.';showLogin()})}
+function post(body){return fetch(API,{method:'POST',body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(r){if(r.error)throw new Error(r.error);return r})}
+function showForgot(){$('#app').innerHTML='<div class="card" style="max-width:380px;margin:24px auto"><h3>Reset password</h3><div class="lbl" style="margin-bottom:10px">Step 1: enter your username and we email you a 6-digit code. Step 2: enter the code and a new password.</div><input id="fu" placeholder="Username" style="margin-bottom:10px"><button class="btn sm" onclick="sendCode()" style="margin-bottom:14px">Email me a code</button><input id="fc" placeholder="6-digit code" inputmode="numeric" style="margin-bottom:10px"><input id="fp" type="password" placeholder="New password" style="margin-bottom:12px"><div class="row"><button class="btn" onclick="doReset()">Reset password</button><button class="btn ghost" onclick="errMsg=\'\';showLogin()">Back</button></div><div class="lbl" style="margin-top:12px">No email saved on the account? Ask the app owner to reset it.</div></div>'}
+function sendCode(){var u=$('#fu').value.trim().toLowerCase();if(!u){alert('Enter your username first.');return}
+  post({action:'forgot',user:u}).then(function(){alert('If this account has an email, a code was sent. Check your inbox and spam folder.')}).catch(function(e){alert(e.message)})}
+function doReset(){var u=$('#fu').value.trim().toLowerCase();
+  post({action:'reset',user:u,code:$('#fc').value.trim(),password:$('#fp').value}).then(function(r){start(r.token,r.user,r.name)}).catch(function(e){alert(e.message)})}
+function emailCard(){return '<div class="card"><h3>Add a recovery email</h3><div class="lbl" style="margin-bottom:8px">So you can reset your password if you forget it.</div><div class="row"><input id="se" type="email" placeholder="you@example.com"><button class="btn" onclick="saveEmail()">Save email</button></div></div>'}
+function saveEmail(){var e=$('#se').value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){alert('Enter a valid email.');return}
+  api('setemail',{email:e}).then(function(){hasEmail=true;render()}).catch(fail)}
 function start(t,u,n){tok=t;me=u;myName=n;try{localStorage.setItem('sl-sess',JSON.stringify({t:t,u:u,n:n}))}catch(e){}$('#so').hidden=false;render();refresh()}
 function signOut(msg){tok=null;me=null;ready=false;S=[];try{localStorage.removeItem('sl-sess')}catch(e){}errMsg=typeof msg==='string'?msg:'';$('#so').hidden=true;showLogin()}
 function init(){var s=null;try{s=JSON.parse(localStorage.getItem('sl-sess'))}catch(e){}if(s&&s.t)start(s.t,s.u,s.n);else showLogin()}
