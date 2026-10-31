@@ -1,22 +1,201 @@
-TripSplit Online
-=================
-Files:
-1. AppsScript.gs - Google Apps Script backend
-2. index.html - online frontend
-
-SETUP
-1. Create a blank Google Sheet.
-2. Open Extensions -> Apps Script.
-3. Replace the default code with AppsScript.gs.
-4. Save.
-5. Deploy -> New deployment -> Web app.
-6. Execute as: Me.
-7. Who has access: Anyone (or your preferred access setting).
-8. Copy the /exec Web App URL.
-9. Open index.html and paste the URL.
-10. Create a trip. Data is stored in the Google Sheet.
-
-IMPORTANT
-- The current version uses a simple shared Web App endpoint.
-- Anyone who has the endpoint URL may be able to write data. For private/family use, add authentication before public deployment.
-- For multi-user production use, a user/Trip PIN or Google login should be added.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>हिसाब-किताब · Split Ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600&family=Yatra+One&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--ink:#14231c;--mut:#64766d;--line:#dbe4df;--acc:#0f7a5a;--accInk:#fff;--pos:#0f7a5a;--neg:#c2410c;--soft:#e4f1ec;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Figtree,system-ui,sans-serif}
+h1,h2,h3,.big{font-family:'Bricolage Grotesque',Figtree,sans-serif;margin:0}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:22px}
+nav{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:10px}
+nav button{border:0;background:none;color:var(--mut);padding:7px 16px;border-radius:7px;font:600 14px Figtree,sans-serif;cursor:pointer}
+nav button.on{background:var(--card);color:var(--ink)}
+main{max-width:920px;margin:0 auto;padding:20px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.grid .card{margin:0}
+.lbl{color:var(--mut);font-size:13px}.big{font-size:28px;font-weight:700}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+button,input,select{font:inherit;color:inherit}
+input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.btn{background:var(--acc);color:var(--accInk);border:0;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:5px 11px;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1 1 140px}.row>.btn{flex:0 0 auto}
+.list>div{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.list>div:last-child{border:0}
+.chip{display:inline-block;background:var(--soft);padding:3px 11px;border-radius:99px;margin:0 6px 6px 0;font-size:13px}
+.bar{height:8px;border-radius:4px;background:var(--soft);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+.chk{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0}.chk label{display:flex;gap:6px;align-items:center}.chk input{width:auto}
+.tag{font-size:12px;background:var(--soft);color:var(--mut);padding:2px 9px;border-radius:99px;margin-left:6px}.empty{color:var(--mut);text-align:center;padding:24px 8px}
+.gcard{cursor:pointer}.gcard:hover{border-color:var(--acc)}
+.x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:18px}
+.sp{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+h2{font-size:20px}h3{font-size:17px;margin-bottom:10px}
+</style>
+<style>
+:root{--bg:#fbf3e2;--card:#fffaf0;--ink:#2a1a14;--mut:#7a6458;--line:#e6d3ad;--acc:#8b1e2d;--accInk:#fff6e5;--pos:#0b6e4f;--neg:#c2410c;--soft:#f5e6c4;--gold:#c9962b;--hd:#6d1424;
+--jaali:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12'%3E%3Cpath d='M12 1L22 6 12 11 2 6z' fill='none' stroke='%23e8b64a' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='6' r='1.4' fill='%23e8b64a'/%3E%3C/svg%3E")}
+body{font-family:Mukta,system-ui,sans-serif;font-size:16px;background-image:radial-gradient(var(--line) 1px,transparent 1.3px);background-size:22px 22px}
+h1,h2,h3,.big{font-family:'Yatra One','Mukta',serif;font-weight:400}
+h3{font-size:18px}.big{font-size:30px}
+header{background:var(--hd);color:#fff3dc;border:0;position:relative;padding-bottom:24px}
+header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:12px;background:var(--jaali) repeat-x,rgba(0,0,0,.22)}
+header h1{font-size:26px;color:#ffd98a;line-height:1.1}
+header h1 small{display:block;font:500 12px Mukta,sans-serif;color:#f0cf9c;letter-spacing:.4px}
+nav{background:rgba(255,255,255,.12)}nav button{color:#f0cf9c}nav button.on{background:#ffd98a;color:#4a0f1b}
+header .btn{color:#ffe7b8;border-color:rgba(255,231,184,.45)}
+.card{border-top:3px solid var(--gold)}
+input,select{background:var(--bg)}
+.chip,.tag{border:1px solid var(--line)}
+details summary{list-style:revert}
+</style>
+</head>
+<body>
+<header><h1>हिसाब-किताब<small>Split Ledger</small></h1><nav><button id="n-dashboard">Dashboard</button><button id="n-groups">Groups</button></nav></header>
+<main id="app"></main>
+<script>
+var API='https://script.google.com/macros/s/AKfycbzGJsIx5xxJcIyQwGBbrBXfrRDQPJr4L0Jq0TKpSDMCYLQbbFNAV6IJK1tkn2Rica8HHg/exec';
+var hasEmail=true,S=[],view='dashboard',gid=null,me=null,myName='',tok=null,ready=false,errMsg='';
+function $(q){return document.querySelector(q)}
+function esc(t){return String(t).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function inr(n){return '₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function G(id){return S.find(function(g){return g.id===id})}
+function role(g){return g.access[me]}
+function canW(g){return role(g)!=='viewer'}
+function isAdm(g){return role(g)==='admin'}
+function api(action,data){return fetch(API,{method:'POST',body:JSON.stringify(Object.assign({token:tok,action:action},data||{}))}).then(function(r){return r.json()}).then(function(r){if(r.error){var e=new Error(r.error);throw e}return r})}
+function fail(e){var m=e&&e.message||'Something went wrong';if(m==='auth'){signOut('Your session expired. Sign in again.');return}
+  if(m==='conflict'){alert('Someone else changed this group at the same time. The latest version is loaded, please try again.');refresh();return}alert(m)}
+function refresh(){return api('list').then(function(r){S=r.groups;hasEmail=r.hasEmail!==false;ready=true;errMsg='';var ae=document.activeElement;if(ae&&/INPUT|SELECT/.test(ae.tagName)&&ae.value&&$('#app').contains(ae))return;render()}).catch(function(e){if(e.message==='auth')fail(e);else{errMsg='Could not reach the server. Check the web app link in this file.';render()}})}
+function mutate(id,fn){var g=JSON.parse(JSON.stringify(G(id)));fn(g);return api('save',{group:g}).then(refresh).catch(fail)}
+function balances(g){var b={};g.members.forEach(function(m){b[m]=0});
+  g.tx.forEach(function(t){if(t.type==='settle'){b[t.by]+=t.amt;b[t.to]-=t.amt}else{b[t.by]+=t.amt;var s=t.amt/t.split.length;t.split.forEach(function(m){b[m]-=s})}});return b}
+function plan(b){var d=[],c=[],out=[];
+  Object.keys(b).forEach(function(k){var v=Math.round(b[k]*100)/100;if(v>0.01)c.push([k,v]);else if(v<-0.01)d.push([k,-v])});
+  c.sort(function(a,b){return b[1]-a[1]});d.sort(function(a,b){return b[1]-a[1]});var i=0,j=0;
+  while(i<d.length&&j<c.length){var a=Math.min(d[i][1],c[j][1]);out.push({from:d[i][0],to:c[j][0],amt:Math.round(a*100)/100});d[i][1]-=a;c[j][1]-=a;if(d[i][1]<0.01)i++;if(c[j][1]<0.01)j++}return out}
+function spent(g){return g.tx.reduce(function(s,t){return s+(t.type==='settle'?0:t.amt)},0)}
+function go(v,id){view=v;gid=id||null;location.hash=v==='dashboard'?'dashboard':'groups';render()}
+$('#n-dashboard').onclick=function(){go('dashboard')};$('#n-groups').onclick=function(){go('groups')};
+function q(v){return '"'+String(v).replace(/"/g,'""')+'"'}
+function download(name,text){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function exportCsv(list,name){
+  var rows=[['Group','Date','Type','Description','Paid by','Paid to','Amount (INR)','Split between','Share each (INR)']];
+  list.forEach(function(g){g.tx.forEach(function(t){var d=new Date(t.date).toISOString().slice(0,10);
+    rows.push(t.type==='settle'?[g.name,d,'Settlement','Settlement',t.by,t.to,t.amt,'','']:[g.name,d,'Expense',t.desc,t.by,'',t.amt,t.split.join('; '),(t.amt/t.split.length).toFixed(2)])})});
+  if(rows.length<2){alert('No transactions to export yet.');return}
+  download(name,'\ufeff'+rows.map(function(r){return r.map(q).join(',')}).join('\r\n'))}
+function exportAll(){exportCsv(S,'split-ledger-all.csv')}
+function exportOne(){var g=G(gid);exportCsv([g],g.name.replace(/[^\w-]+/g,'_')+'.csv')}
+function meName(g){return (g.link&&g.link[me])||(g.members.indexOf(myName)>=0?myName:null)}
+function debts(list){var d={};
+  function add(a,b,v){d[a]=d[a]||{};d[a][b]=(d[a][b]||0)+v}
+  list.forEach(function(g){g.tx.forEach(function(t){if(t.type==='settle')add(t.by,t.to,-t.amt);else{var s=t.amt/t.split.length;t.split.forEach(function(m){if(m!==t.by)add(m,t.by,s)})}})});
+  var out=[];Object.keys(d).forEach(function(a){Object.keys(d[a]).forEach(function(b){var n=d[a][b]-((d[b]&&d[b][a])||0);if(n>0.01)out.push({from:a,to:b,amt:Math.round(n*100)/100})})});return out}
+function detail(list,you){var ds=debts(list);if(!ds.length)return '<div class="empty">Everyone is even.</div>';
+  var by={};ds.forEach(function(x){(by[x.from]=by[x.from]||[]).push(x)});
+  return '<div class="list">'+Object.keys(by).map(function(f){var tot=by[f].reduce(function(s,x){return s+x.amt},0);
+    return '<div style="align-items:flex-start"><span><b>'+esc(f)+(f===you?' (you)':'')+'</b> has to pay<br>'+by[f].map(function(x){return '<span class="lbl">'+esc(x.to)+(x.to===you?' (you)':'')+': </span><b>'+inr(x.amt)+'</b>'}).join('<br>')+'</span><span class="neg"><span class="lbl">total </span><b>'+inr(tot)+'</b></span></div>'}).join('')+'</div>'}
+function netAll(list){var b={};list.forEach(function(g){var x=balances(g);Object.keys(x).forEach(function(k){b[k]=(b[k]||0)+x[k]})});return b}
+var mode='direct';try{mode=localStorage.getItem('sl-mode')||'direct'}catch(e){}
+function setMode(m){mode=m;try{localStorage.setItem('sl-mode',m)}catch(e){}render()}
+function pays(list){var r=mode==='direct'?debts(list):plan(netAll(list));return r.sort(function(x,y){return x.from<y.from?-1:x.from>y.from?1:y.amt-x.amt})}
+function modeBar(){return '<div class="row" style="margin-bottom:6px"><span class="lbl" style="flex:none">Show payments as</span><button class="btn sm'+(mode==='direct'?'':' ghost')+'" onclick="setMode(\'direct\')">Direct</button><button class="btn sm'+(mode==='net'?'':' ghost')+'" onclick="setMode(\'net\')">Fewest payments</button></div><div class="lbl" style="margin-bottom:10px">'+(mode==='direct'?'Each person pays exactly what they owe to each person, based on the expenses.':'Combines everything into the fewest transfers, so amounts can differ from what each person owes directly.')+'</div>'}
+function summary(list,you){var ps=pays(list);if(!ps.length)return '<div class="empty">Everyone is even.</div>';
+  var by={};ps.forEach(function(x){(by[x.from]=by[x.from]||[]).push(x)});
+  return '<div class="list">'+Object.keys(by).map(function(f){var tot=by[f].reduce(function(s,x){return s+x.amt},0);
+    return '<div style="align-items:flex-start"><span><b>'+esc(f)+(f===you?' (you)':'')+'</b> has to pay<br>'+by[f].map(function(x){return '<span class="lbl">'+esc(x.to)+(x.to===you?' (you)':'')+': </span><b>'+inr(x.amt)+'</b>'}).join('<br>')+'</span><span class="neg"><span class="lbl">total </span><b>'+inr(tot)+'</b></span></div>'}).join('')+'</div>'}
+function mine(list){var o=0,r=0,any=false;list.forEach(function(g){var n=meName(g);if(!n)return;any=true;var v=balances(g)[n]||0;if(v>0)r+=v;else o-=v});
+  return any?'<div class="grid" style="margin-bottom:12px"><div class="card" style="margin:0"><div class="lbl">You have to pay</div><div class="big neg">'+inr(o)+'</div></div><div class="card" style="margin:0"><div class="lbl">You get back</div><div class="big pos">'+inr(r)+'</div></div></div>':''}
+function dashboard(){
+  var tot=0,n=0,owed=0,all=[],payers={};
+  S.forEach(function(g){tot+=spent(g);n+=g.tx.length;var b=balances(g);Object.keys(b).forEach(function(k){if(b[k]>0.01)owed+=b[k]});
+    g.tx.forEach(function(t){all.push({g:g,t:t});if(t.type!=='settle')payers[t.by]=(payers[t.by]||0)+t.amt})});
+  all.sort(function(a,b){return b.t.date-a.t.date});
+  var max=Math.max.apply(null,S.map(spent).concat([1])),top=Object.keys(payers).sort(function(a,b){return payers[b]-payers[a]}).slice(0,5);
+  var h=(hasEmail?'':emailCard())+'<div class="sp"><span class="lbl">Signed in as '+esc(myName)+'. Showing only groups you created or were given access to.</span><button class="btn ghost sm" onclick="exportAll()">Export all as CSV</button></div>'
+   +'<div class="grid"><div class="card"><div class="lbl">Total spent</div><div class="big">'+inr(tot)+'</div></div><div class="card"><div class="lbl">Still to settle</div><div class="big neg">'+inr(owed)+'</div></div><div class="card"><div class="lbl">Groups</div><div class="big">'+S.length+'</div></div><div class="card"><div class="lbl">Transactions</div><div class="big">'+n+'</div></div></div><div style="height:14px"></div>';
+  if(!S.length)return h+'<div class="card empty">No groups yet. Create one, or ask a group admin to add you.<br><br><button class="btn" onclick="go(\'groups\')">Create a group</button></div>';
+  h+='<div class="card"><h3>Who pays whom (all groups)</h3>'+mine(S)+modeBar()+summary(S,null)+'</div>';
+  h+='<div class="card"><h3>Spending by group</h3>'+S.map(function(g){return '<div style="margin-bottom:12px"><div class="sp" style="margin:0"><b>'+esc(g.name)+'</b><span>'+inr(spent(g))+'</span></div><div class="bar"><i style="width:'+(spent(g)/max*100)+'%"></i></div></div>'}).join('')+'</div>';
+  h+='<div class="card"><h3>Top payers</h3>'+(top.length?'<div class="list">'+top.map(function(k){return '<div><span>'+esc(k)+'</span><b>'+inr(payers[k])+'</b></div>'}).join('')+'</div>':'<div class="empty">No expenses yet.</div>')+'</div>';
+  h+='<div class="card"><h3>Recent activity</h3>'+(all.length?'<div class="list">'+all.slice(0,8).map(function(x){var t=x.t;return '<div><span><b>'+esc(t.type==='settle'?t.by+' paid '+t.to:t.desc)+'</b><br><span class="lbl">'+esc(x.g.name)+' · '+new Date(t.date).toLocaleDateString('en-IN')+(t.type==='settle'?'':' · paid by '+esc(t.by))+'</span></span><b class="'+(t.type==='settle'?'pos':'')+'">'+inr(t.amt)+'</b></div>'}).join('')+'</div>':'<div class="empty">Nothing recorded yet.</div>')+'</div>';
+  return h}
+function groups(){
+  var h='<div class="card"><h3>New group</h3><div class="row"><input id="gn" placeholder="Group name, e.g. Goa trip"><input id="gm" placeholder="Other members (names), comma separated"><button class="btn" onclick="addGroup()">Create group</button></div><div class="lbl" style="margin-top:8px">You are added as admin and as the first member. Give other people access after creating.</div></div>';
+  if(!S.length)return h+'<div class="empty">Your groups will show up here.</div>';
+  return h+'<div class="grid">'+S.map(function(g){var b=balances(g),o=0;Object.keys(b).forEach(function(k){if(b[k]>0.01)o+=b[k]});
+    return '<div class="card gcard" onclick="go(\'group\',\''+g.id+'\')"><h3>'+esc(g.name)+'<span class="tag">'+role(g)+'</span></h3><div class="lbl">'+g.members.length+' members · '+g.tx.length+' entries</div><div style="margin-top:8px"><b>'+inr(spent(g))+'</b> spent</div><div class="lbl">'+(o>0.01?inr(o)+' to settle':'All settled')+'</div></div>'}).join('')+'</div>'}
+function group(){
+  var g=G(gid);if(!g){go('groups');return ''}
+  var b=balances(g),p=pays([g]),w=canW(g),a=isAdm(g);
+  var h='<div class="sp"><div class="row" style="flex:none"><button class="btn ghost sm" onclick="go(\'groups\')">Back</button><h2>'+esc(g.name)+'</h2><span class="tag">'+role(g)+'</span></div><div class="row" style="flex:none"><button class="btn ghost sm" onclick="exportOne()">Export CSV</button>'+(a?'<button class="btn ghost sm" onclick="delGroup()">Delete group</button>':'')+'</div></div>';
+  h+='<div class="card"><h3>Members</h3>'+g.members.map(function(m){return '<span class="chip">'+esc(m)+'</span>'}).join('')+(a?'<div class="row" style="margin-top:6px"><input id="nm" placeholder="Add a member by name"><button class="btn sm" onclick="addMember()">Add member</button></div>':'')+'</div>';
+  h+='<div class="card"><h3>Who has access</h3><div class="list">'+Object.keys(g.access).map(function(id){return '<div><span data-uid="'+esc(id)+'">…</span><span>'+(a&&id!==me?'<select style="width:auto" onchange="setRole(\''+esc(id)+'\',this.value)">'+['admin','member','viewer'].map(function(r){return '<option'+(g.access[id]===r?' selected':'')+'>'+r+'</option>'}).join('')+'</select> <button class="x" aria-label="Remove access" onclick="rmAccess(\''+esc(id)+'\')">×</button>':'<span class="tag">'+g.access[id]+(id===me?' (you)':'')+'</span>')+'</span></div>'}).join('')+'</div>'
+   +'<div class="lbl" style="margin-top:8px">Admin: manage people and delete. Member: add expenses and settle. Viewer: read and export only.</div>'
+   +(a?'<div class="row" style="margin-top:10px"><input id="ue" placeholder="Their username"><input id="un" placeholder="Name (optional)"><select id="ur" style="flex:0 0 110px"><option>member</option><option>viewer</option><option>admin</option></select><button class="btn sm" onclick="grant()">Give access</button></div>':'')+'</div>';
+  if(w){h+='<div class="card"><h3>Add expense</h3><div class="row"><input id="ed" placeholder="What was it for?"><input id="ea" type="number" min="0" step="0.01" placeholder="Amount (₹)"><select id="ep">'+g.members.map(function(m){return '<option>'+esc(m)+'</option>'}).join('')+'</select></div><div class="lbl" style="margin-top:10px">Split equally between</div><div class="chk">'+g.members.map(function(m,i){return '<label><input type="checkbox" class="sc" value="'+i+'" checked>'+esc(m)+'</label>'}).join('')+'</div><button class="btn" onclick="addExpense()">Save expense</button></div>'}
+  h+='<div class="card"><h3>Who pays whom</h3>'+mine([g])+modeBar()+summary([g],meName(g))+'</div>';
+  h+='<div class="card"><h3>Balances</h3><div class="list">'+g.members.map(function(m){var v=Math.round(b[m]*100)/100;return '<div><span>'+esc(m)+'</span><b class="'+(v>0?'pos':v<0?'neg':'')+'">'+(v>0?'gets back '+inr(v):v<0?'owes '+inr(v):'settled')+'</b></div>'}).join('')+'</div></div>';
+  h+='<div class="card"><h3>Record a payment</h3>'+(p.length?'<div class="list">'+p.map(function(x,i){return '<div><span><b>'+esc(x.from)+'</b> pays <b>'+esc(x.to)+'</b> '+inr(x.amt)+'</span>'+(w?'<button class="btn sm" onclick="settle('+i+')">Mark paid</button>':'')+'</div>'}).join('')+'</div>':'<div class="empty">Everyone is even.</div>')+'</div>';
+  h+='<div class="card"><h3>History</h3>'+(g.tx.length?'<div class="list">'+g.tx.slice().reverse().map(function(t){return '<div><span><b>'+esc(t.type==='settle'?t.by+' paid '+t.to:t.desc)+'</b><br><span class="lbl">'+new Date(t.date).toLocaleDateString('en-IN')+(t.type==='settle'?' · settlement':' · paid by '+esc(t.by)+' · split '+t.split.length+' ways')+'</span></span><span><b>'+inr(t.amt)+'</b>'+(w?' <button class="x" aria-label="Delete entry" onclick="delTx(\''+t.id+'\')">×</button>':'')+'</span></div>'}).join('')+'</div>':'<div class="empty">No entries yet.</div>')+'</div>';
+  return h}
+function addGroup(){
+  var n=$('#gn').value.trim(),m=$('#gm').value.split(',').map(function(s){return s.trim()}).filter(function(s,i,a){return s&&a.indexOf(s)===i&&s!==myName});
+  if(!n||!m.length){alert('Enter a group name and at least one other member.');return}
+  var o={};o[me]='admin';var lk={};lk[me]=myName;var id=uid();
+  api('save',{group:{id:id,name:n,members:[myName].concat(m),tx:[],access:o,link:lk,v:0}}).then(refresh).then(function(){go('group',id)}).catch(fail)}
+function addMember(){var n=$('#nm').value.trim();if(!n)return;mutate(gid,function(g){if(g.members.indexOf(n)<0)g.members.push(n)})}
+function addExpense(){
+  var g=G(gid),d=$('#ed').value.trim(),a=parseFloat($('#ea').value),by=$('#ep').value;
+  var sp=[].slice.call(document.querySelectorAll('.sc')).filter(function(c){return c.checked}).map(function(c){return g.members[+c.value]});
+  if(!d||!(a>0)||!sp.length){alert('Add a description, an amount above 0, and at least one person to split with.');return}
+  mutate(gid,function(g){g.tx.push({id:uid(),type:'expense',desc:d,amt:a,by:by,split:sp,date:Date.now(),addedBy:me})})}
+function settle(i){var x=pays([G(gid)])[i];if(!x)return;mutate(gid,function(g){g.tx.push({id:uid(),type:'settle',by:x.from,to:x.to,amt:x.amt,date:Date.now(),addedBy:me})})}
+function delTx(id){mutate(gid,function(g){g.tx=g.tx.filter(function(t){return t.id!==id})})}
+function delGroup(){if(confirm('Delete this group and all its entries for everyone?'))api('delete',{id:gid}).then(function(){go('groups');return refresh()}).catch(fail)}
+function grant(){var e=$('#ue').value.trim().toLowerCase(),n=$('#un').value.trim()||e,r=$('#ur').value;
+  if(!/^[a-z0-9_]{3,20}$/.test(e)){alert('Enter their username (3-20 letters, numbers or underscores).');return}
+  mutate(gid,function(g){g.access[e]=r;g.link=g.link||{};g.link[e]=n;if(g.members.indexOf(n)<0)g.members.push(n)})}
+function setRole(id,r){mutate(gid,function(g){g.access[id]=r})}
+function rmAccess(id){if(confirm('Remove this person from the group?'))mutate(gid,function(g){delete g.access[id]})}
+function showLogin(){$('#app').innerHTML='<div class="card" style="max-width:380px;margin:24px auto"><h3>Sign in</h3>'+(errMsg?'<div class="neg" style="margin-bottom:10px">'+esc(errMsg)+'</div>':'')+'<input id="lu" placeholder="Username" autocomplete="username" style="margin-bottom:10px"><input id="lp" type="password" placeholder="Password" autocomplete="current-password" style="margin-bottom:10px"><input id="ln" placeholder="Your name (only for a new account)" style="margin-bottom:10px"><input id="le" type="email" placeholder="Email for password reset (new account)" style="margin-bottom:12px"><div class="row"><button class="btn" onclick="auth(\'login\')">Sign in</button><button class="btn ghost" onclick="auth(\'register\')">Create account</button></div><div style="margin-top:12px"><button class="x" style="font-size:14px;text-decoration:underline" onclick="showForgot()">Forgot password?</button></div></div>'}
+function auth(kind){var u=$('#lu').value.trim().toLowerCase(),p=$('#lp').value;
+  if(!/^[a-z0-9_]{3,20}$/.test(u)){errMsg='Username must be 3-20 letters, numbers or underscores.';showLogin();return}
+  if(p.length<6){errMsg='Password must be at least 6 characters.';showLogin();return}
+  errMsg='';fetch(API,{method:'POST',body:JSON.stringify({action:kind,user:u,password:p,name:$('#ln').value.trim(),email:$('#le').value.trim()})}).then(function(r){return r.json()}).then(function(r){if(r.error){errMsg=r.error;showLogin();return}start(r.token,r.user,r.name)}).catch(function(){errMsg='Could not reach the server. Check the web app link in this file.';showLogin()})}
+function post(body){return fetch(API,{method:'POST',body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(r){if(r.error)throw new Error(r.error);return r})}
+function showForgot(){$('#app').innerHTML='<div class="card" style="max-width:380px;margin:24px auto"><h3>Reset password</h3><div class="lbl" style="margin-bottom:10px">Step 1: enter your username and we email you a 6-digit code. Step 2: enter the code and a new password.</div><input id="fu" placeholder="Username" style="margin-bottom:10px"><button class="btn sm" onclick="sendCode()" style="margin-bottom:14px">Email me a code</button><input id="fc" placeholder="6-digit code" inputmode="numeric" style="margin-bottom:10px"><input id="fp" type="password" placeholder="New password" style="margin-bottom:12px"><div class="row"><button class="btn" onclick="doReset()">Reset password</button><button class="btn ghost" onclick="errMsg=\'\';showLogin()">Back</button></div><div class="lbl" style="margin-top:12px">No email saved on the account? Ask the app owner to reset it.</div></div>'}
+function sendCode(){var u=$('#fu').value.trim().toLowerCase();if(!u){alert('Enter your username first.');return}
+  post({action:'forgot',user:u}).then(function(){alert('If this account has an email, a code was sent. Check your inbox and spam folder.')}).catch(function(e){alert(e.message)})}
+function doReset(){var u=$('#fu').value.trim().toLowerCase();
+  post({action:'reset',user:u,code:$('#fc').value.trim(),password:$('#fp').value}).then(function(r){start(r.token,r.user,r.name)}).catch(function(e){alert(e.message)})}
+function emailCard(){return '<div class="card"><h3>Add a recovery email</h3><div class="lbl" style="margin-bottom:8px">So you can reset your password if you forget it.</div><div class="row"><input id="se" type="email" placeholder="you@example.com"><button class="btn" onclick="saveEmail()">Save email</button></div></div>'}
+function saveEmail(){var e=$('#se').value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){alert('Enter a valid email.');return}
+  api('setemail',{email:e}).then(function(){hasEmail=true;render()}).catch(fail)}
+function start(t,u,n){tok=t;me=u;myName=n;try{localStorage.setItem('sl-sess',JSON.stringify({t:t,u:u,n:n}))}catch(e){}$('#so').hidden=false;render();refresh()}
+function signOut(msg){tok=null;me=null;ready=false;S=[];try{localStorage.removeItem('sl-sess')}catch(e){}errMsg=typeof msg==='string'?msg:'';$('#so').hidden=true;showLogin()}
+function init(){var s=null;try{s=JSON.parse(localStorage.getItem('sl-sess'))}catch(e){}if(s&&s.t)start(s.t,s.u,s.n);else showLogin()}
+function render(){
+  $('#n-dashboard').className=view==='dashboard'?'on':'';$('#n-groups').className=view!=='dashboard'?'on':'';
+  if(!me){showLogin();return}
+  if(!ready){$('#app').innerHTML='<div class="empty">'+(errMsg?esc(errMsg):'Loading your groups…')+'</div>';return}
+  $('#app').innerHTML=view==='dashboard'?dashboard():view==='groups'?groups():group()}
+document.querySelector('header').insertAdjacentHTML('beforeend','<button class="btn ghost sm" id="so" hidden onclick="signOut()">Sign out</button>');
+if(location.hash==='#groups')view='groups';
+render();init();
+setInterval(function(){if(me&&document.visibilityState==='visible')refresh()},20000);
+</script>
+</body>
+</html>
