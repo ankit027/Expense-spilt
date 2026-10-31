@@ -1,0 +1,27 @@
+{
+  "name": "हिसाब-किताब · Split Ledger",
+  "short_name": "हिसाब-किताब",
+  "description": "Split expenses, track balances and settle group payments.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fbf3e2",
+  "theme_color": "#6d1424",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
